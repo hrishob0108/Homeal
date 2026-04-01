@@ -9,10 +9,20 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import DayscholarDashboard from './pages/Dashboard/DayscholarDashboard';
 import HostelerDashboard from './pages/Dashboard/HostelerDashboard';
 import SelectRole from './selectRole';
+import { Toaster } from 'react-hot-toast';
 
 const App = () => {
   return (
-    <Routes>
+    <>
+      <Toaster 
+        position="top-center" 
+        toastOptions={{ 
+          style: { background: '#111827', color: '#fff', borderRadius: '1rem', fontWeight: 'bold' },
+          success: { iconTheme: { primary: '#10B981', secondary: '#fff' } },
+          error: { iconTheme: { primary: '#EF4444', secondary: '#fff' } }
+        }} 
+      />
+      <Routes>
       <Route path="/" element={<Navigate to="/home" />} />
       <Route path="/home" element={<Home />} />
       <Route path="/login" element={<Login />} />
@@ -31,6 +41,7 @@ const App = () => {
 
       <Route path="/select-role" element={<SelectRole />} />
     </Routes>
+    </>
   );
 };
 

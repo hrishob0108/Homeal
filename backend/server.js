@@ -7,6 +7,7 @@ const userRoutes = require("./routes/userRoutes")
 const mealRoutes = require("./routes/mealRoutes")
 const authRoutes = require("./routes/authRoutes")
 const otpRoutes = require("./routes/otpRoutes");
+const orderRoutes = require("./routes/orderRoutes");
 
 dotenv.config(); 
 
@@ -26,6 +27,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/meals",mealRoutes);
 app.use("/api/auth",authRoutes);
 app.use("/api/auth", otpRoutes);
+app.use("/api/orders", orderRoutes);
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });

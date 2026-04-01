@@ -1,14 +1,21 @@
-// src/pages/dashboard/Dashboard.jsx
-import HostelerDashboard from './HostelerDashboard';
-import DayscholarDashboard from './DayscholarDashboard';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
-  const user = JSON.parse(localStorage.getItem('currentUser')); // 🔁 Use currentUser
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem('currentUser'));
 
-  const role = user?.role;
-  if (role === 'hosteler') return <HostelerDashboard />;
-  if (role === 'dayscholar') return <DayscholarDashboard />;
-  return <div className="text-center text-white mt-10">Invalid Role or Not Logged In</div>;
+  useEffect(() => {
+    if (!user || !user.role) {
+      navigate('/login');
+    } else if (user.role === 'hosteler') {
+      navigate('/hosteler-dashboard');
+    } else if (user.role === 'dayscholar') {
+      navigate('/dayscholar-dashboard');
+    }
+  }, [navigate]);
+
+  return <div className="min-h-screen bg-[#FFFBF7] animate-pulse"></div>;
 };
 
 export default Dashboard;

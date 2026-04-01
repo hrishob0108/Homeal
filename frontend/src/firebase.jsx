@@ -27,21 +27,8 @@ function GOO() {
           photo: res.user.photoURL,
         };
 
-        // Save user in localStorage
         localStorage.setItem("googleUser", JSON.stringify(userData));
-
-        // Check if role already exists for this user
-        const existingUser = JSON.parse(localStorage.getItem("userRoles")) || {};
-        const userRole = existingUser[userData.email];
-
-        if (userRole) {
-          // Redirect to correct dashboard
-          navigate(`/${userRole}Dashboard`);
-
-        } else {
-          // No role yet → go to role selection page
-          navigate("/select-role");
-        }
+        navigate("/select-role"); // Always route to SelectRole to mint the token
       })
       .catch((err) => console.error("Google Sign-In Error:", err));
   };
