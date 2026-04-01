@@ -1,49 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const Meal = require("../models/Meal");
+const { getMeals, createMeal, updateMeal, deleteMeal } = require("../controllers/mealController");
+const { protect } = require("../middleware/authMiddleware");
 
-router.post("/", async (req, res) => {
-  try {
-    const { title, description, createdBy } = req.body;
-
-    const newMeal = new Meal({
-      title,
-      description,
-      createdBy,
-    });
-
-    const savedMeal = await newMeal.save();
-    res.status(201).json(savedMeal);
-  } catch (err) {
-    res.status(500).json({ error: "Error in creating the meal", details: err.message });
-  }
-});
-
-router.get("/", async (req, res) => {
-  try {
-    const meals = await Meal.find().sort({ createdAt: -1 });
-    res.status(200).json(meals);
-  } catch (err) {
-    res.status(500).json({ error: "Error in fetching the meals", details: err.message });
-  }
-});
-
-router.put("/:id", async (req, res) => {
-  try {
-    const updatedMeal = await Meal.findByIdAndUpdate(
-      req.params.id,
-      {
-        $set: req.body,
-      },
-      { new: true }
-    );
-
-    if (!updatedMeal) return res.status(404).json({ error: "Meal not found" });
-
-    res.status(200).json(updatedMeal);
-  } catch (err) {
-    res.status(500).json({ error: "Error in updating the meal", details: err.message });
-  }
-});
+router.get("/", getMeals); // Public feed
+router.post("/", protect, createMeal);
+router.put("/:id", protect, updateMeal);
+router.delete("/:id", protect, deleteMeal);
 
 module.exports = router;
