@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FaUtensils, FaArrowLeft, FaCheckCircle, FaStar } from "react-icons/fa";
 import { FiMail, FiLock } from "react-icons/fi";
 import GOO from "../firebase";
+import api from "../services/api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -25,13 +26,9 @@ const Login = () => {
     e.preventDefault();
     if (validate()) {
       try {
-        const response = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-        const data = await response.json();
-        if (response.ok) {
+        const response = await api.post("/auth/login", { email, password });
+        const data = response.data;
+        if (response.status === 200 || response.status === 201) {
           localStorage.setItem("user", JSON.stringify(data));
           localStorage.setItem("currentUser", JSON.stringify(data));
           navigate("/dashboard");

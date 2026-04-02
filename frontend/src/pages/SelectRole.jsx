@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiHome, FiBriefcase } from "react-icons/fi";
+import api from "../services/api";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -19,14 +20,10 @@ const SelectRole = () => {
 
   const handleRoleSelection = async (role) => {
     try {
-      const response = await fetch("/api/auth/google", {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({ name: googleUser.name, email: googleUser.email, role: role })
-      });
-      const data = await response.json();
+      const response = await api.post("/auth/google", { name: googleUser.name, email: googleUser.email, role: role });
+      const data = response.data;
       
-      if(response.ok) {
+      if(response.status === 200 || response.status === 201) {
          localStorage.setItem("currentUser", JSON.stringify(data));
          navigate(`/${role}-dashboard`);
       } else {
