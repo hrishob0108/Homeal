@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiUser, FiShoppingCart, FiSearch, FiClock, FiPackage, FiStar, FiLogOut, FiTrendingUp } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import api from '../../services/api';
 
 // Animation configs
 const containerVariants = {
@@ -33,16 +34,12 @@ const HostelerDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       // Fetch live feed
-      const resMeals = await fetch('/api/meals');
-      const dataMeals = await resMeals.json();
-      if(resMeals.ok) setMeals(dataMeals);
+      const resMeals = await api.get('/meals');
+      setMeals(resMeals.data);
 
       // Fetch personal orders
-      const resOrders = await fetch('/api/orders/my-orders', {
-        headers: { 'Authorization': `Bearer ${user.token}` }
-      });
-      const dataOrders = await resOrders.json();
-      if(resOrders.ok) setMyOrders(dataOrders);
+      const resOrders = await api.get('/orders/my-orders');
+      setMyOrders(resOrders.data);
 
     } catch (err) {
       console.error(err);
@@ -67,16 +64,8 @@ const HostelerDashboard = () => {
         neededBy: "Asap" 
       };
 
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if(res.ok) {
+      const res = await api.post('/orders', payload);
+      if(res.status === 200 || res.status === 201) {
         toast.success(`Successfully requested ${meal.title}!`);
         fetchDashboardData();
       } else {

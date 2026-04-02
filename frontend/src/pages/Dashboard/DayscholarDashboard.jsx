@@ -6,6 +6,7 @@ import {
 import { FaRupeeSign, FaFire } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import api from '../../services/api';
 
 // Animation configs
 const containerVariants = {
@@ -50,18 +51,12 @@ const DayscholarDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       // 1. Fetch Orders requested from this seller
-      const resOrders = await fetch('/api/orders/requests', {
-        headers: { 'Authorization': `Bearer ${user.token}` }
-      });
-      const dataOrders = await resOrders.json();
-      if(resOrders.ok) setRequests(dataOrders);
+      const resOrders = await api.get('/orders/requests');
+      setRequests(resOrders.data);
 
       // 2. Fetch all meals and filter by my id locally
-      const resMeals = await fetch('/api/meals');
-      const dataMeals = await resMeals.json();
-      if(resMeals.ok) {
-        setMyMenu(dataMeals.filter(m => m.createdBy === user._id));
-      }
+      const resMeals = await api.get('/meals');
+      setMyMenu(resMeals.data.filter(m => m.createdBy === user._id));
     } catch (err) {
       console.error(err);
       toast.error("Failed to load dashboard data");
@@ -73,16 +68,9 @@ const DayscholarDashboard = () => {
       const payload = { status: newStatus };
       if(newStatus === 'Delivered' && url) payload.proofImageUrl = url;
 
-      const res = await fetch(`/api/orders/${orderId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
-        },
-        body: JSON.stringify(payload)
-      });
+      const res = await api.put(`/orders/${orderId}/status`, payload);
 
-      if(res.ok) {
+      if(res.status === 200) {
         toast.success(`Order marked as ${newStatus}`);
         fetchDashboardData(); // refresh list
         if(newStatus === 'Delivered') setUrl(""); // reset image
@@ -97,16 +85,9 @@ const DayscholarDashboard = () => {
   const handleUploadProof = async (orderId) => {
     try {
       const payload = { proofImageUrl: url };
-      const res = await fetch(`/api/orders/${orderId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
-        },
-        body: JSON.stringify(payload)
-      });
+      const res = await api.put(`/orders/${orderId}/status`, payload);
 
-      if(res.ok) {
+      if(res.status === 200) {
         toast.success("Proof submitted to Hosteler!");
         setUrl(""); // Clear local state since it's now in DB
         fetchDashboardData();
@@ -351,12 +332,8 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
      if(!form.title || !form.price) return toast.error("Title and Price are required.");
      
      try {
-       const res = await fetch('/api/meals', {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${user.token}` },
-          body: JSON.stringify(form)
-       });
-       if(res.ok) {
+       const res = await api.post('/meals', form);
+       if(res.status === 200 || res.status === 201) {
           toast.success("Dish Published seamlessly!");
           setIsAdding(false);
           setForm({ title: '', price: '', tag: 'New' });
@@ -372,12 +349,8 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
   const handleUpdateItem = async (e, id) => {
       e.preventDefault();
       try {
-        const res = await fetch(`/api/meals/${id}`, {
-           method: "PUT",
-           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${user.token}` },
-           body: JSON.stringify(editForm)
-        });
-        if(res.ok) {
+        const res = await api.put(`/meals/${id}`, editForm);
+        if(res.status === 200) {
            toast.success("Meal updated successfully!");
            setEditingId(null);
            fetchDashboardData();
@@ -392,11 +365,8 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
   const handleDeleteItem = async (id) => {
      if(!window.confirm("Are you sure you want to delete this dish?")) return;
      try {
-       const res = await fetch(`/api/meals/${id}`, {
-          method: "DELETE",
-          headers: { "Authorization": `Bearer ${user.token}` }
-       });
-       if(res.ok) {
+       const res = await api.delete(`/meals/${id}`);
+       if(res.status === 200) {
           toast.success("Meal deleted from menu.");
           fetchDashboardData();
        } else {

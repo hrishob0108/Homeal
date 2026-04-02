@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaUtensils, FaArrowLeft, FaHeart } from "react-icons/fa";
 import { FiUser, FiMail, FiLock, FiShield } from "react-icons/fi";
+import api from "../services/api";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -50,13 +51,9 @@ const Register = () => {
     e.preventDefault();
     if (validate()) {
       try {
-        const response = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
-        const data = await response.json();
-        if (response.ok) {
+        const response = await api.post("/auth/register", formData);
+        const data = response.data;
+        if (response.status === 200 || response.status === 201) {
           localStorage.setItem("user", JSON.stringify(data));
           localStorage.setItem("currentUser", JSON.stringify(data));
           navigate("/dashboard");
