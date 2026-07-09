@@ -9,7 +9,20 @@ export const useSocket = () => {
 
 export const SocketProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
-    const user = JSON.parse(localStorage.getItem('currentUser'));
+    const [user, setUser] = useState(null);
+
+    useEffect(() => {
+        const checkUser = () => {
+            const storedUser = JSON.parse(sessionStorage.getItem('currentUser'));
+            if (JSON.stringify(storedUser) !== JSON.stringify(user)) {
+                setUser(storedUser);
+            }
+        };
+
+        checkUser();
+        const interval = setInterval(checkUser, 1000);
+        return () => clearInterval(interval);
+    }, [user]);
 
     useEffect(() => {
         if (user) {
@@ -20,6 +33,8 @@ export const SocketProvider = ({ children }) => {
             newSocket.emit('join_room', user._id);
 
             return () => newSocket.close();
+        } else {
+            setSocket(null);
         }
     }, [user ? user._id : null]);
 

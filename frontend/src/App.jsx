@@ -8,7 +8,7 @@ import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard/Dashboard';
 import DayscholarDashboard from './pages/Dashboard/DayscholarDashboard';
 import HostelerDashboard from './pages/Dashboard/HostelerDashboard';
-import SelectRole from './selectRole';
+import SelectRole from './pages/SelectRole';
 import { Toaster } from 'react-hot-toast';
 
 const App = () => {

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiUser, FiShoppingCart, FiSearch, FiClock, FiPackage, FiStar, FiLogOut, FiTrendingUp } from 'react-icons/fi';
+import { FiUser, FiShoppingCart, FiSearch, FiClock, FiPackage, FiStar, FiLogOut, FiTrendingUp, FiMapPin } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import { useSocket } from '../../context/SocketContext';
+import RequestFoodModal from '../../components/RequestFoodModal';
 
 // Animation configs
 const containerVariants = {
@@ -18,18 +20,44 @@ const itemVariants = {
 
 const HostelerDashboard = () => {
   const navigate = useNavigate();
+  const socket = useSocket();
   const [meals, setMeals] = useState([]);
   const [myOrders, setMyOrders] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   
-  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const user = JSON.parse(sessionStorage.getItem('currentUser'));
 
   useEffect(() => {
     if(!user || !user.token) {
       navigate('/login');
       return;
     }
+    if (user.role !== 'hosteler') {
+      if (user.role === 'dayscholar') {
+        navigate('/dayscholar-dashboard');
+      } else {
+        navigate('/login');
+      }
+      return;
+    }
     fetchDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleOrderStatusUpdated = (updatedOrder) => {
+      toast.success(`Order status updated to: ${updatedOrder.status}`);
+      fetchDashboardData();
+    };
+
+    socket.on('order_status_updated', handleOrderStatusUpdated);
+
+    return () => {
+      socket.off('order_status_updated', handleOrderStatusUpdated);
+    };
+  }, [socket]);
 
   const fetchDashboardData = async () => {
     try {
@@ -41,9 +69,25 @@ const HostelerDashboard = () => {
       const resOrders = await api.get('/orders/my-orders');
       setMyOrders(resOrders.data);
 
+      // Fetch custom requests
+      const resRequests = await api.get('/food-requests/my-requests');
+      setMyRequests(resRequests.data);
+
     } catch (err) {
       console.error(err);
       toast.error("Failed to fetch dashboard data");
+    }
+  };
+
+  const handleCancelRequest = async (requestId) => {
+    if (!window.confirm("Are you sure you want to cancel this request?")) return;
+    try {
+      await api.delete(`/food-requests/${requestId}`);
+      toast.success("Request cancelled successfully.");
+      fetchDashboardData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to cancel request.");
     }
   };
 
@@ -79,6 +123,7 @@ const HostelerDashboard = () => {
   // derived data
   const activeOrder = myOrders.find(o => o.status !== 'Delivered' && o.status !== 'Declined');
   const pastOrders = myOrders.filter(o => o.status === 'Delivered' || o.status === 'Declined');
+  const pendingRequests = myRequests.filter(r => r.status === 'Pending');
 
   return (
     <div className="bg-[#FFFBF7] min-h-screen font-sans relative overflow-x-hidden text-gray-800 pb-12">
@@ -89,7 +134,7 @@ const HostelerDashboard = () => {
 
       <main className="relative z-10 pt-28 px-4 sm:px-6 lg:px-12 max-w-7xl mx-auto">
         <motion.div variants={containerVariants} initial="hidden" animate="visible">
-          <WelcomeBanner user={user} />
+          <WelcomeBanner user={user} onRequestCustom={() => setIsRequestModalOpen(true)} />
           
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
@@ -98,11 +143,20 @@ const HostelerDashboard = () => {
             </div>
             <div className="space-y-8">
               <OrderTracking activeOrder={activeOrder} />
+              <MyCustomRequests requests={pendingRequests} onCancel={handleCancelRequest} />
               <PromoCard />
             </div>
           </div>
         </motion.div>
       </main>
+
+      <RequestFoodModal
+        isOpen={isRequestModalOpen}
+        onClose={() => setIsRequestModalOpen(false)}
+        onRequestCreated={(newRequest) => {
+          setMyRequests(prev => [newRequest, ...prev]);
+        }}
+      />
     </div>
   );
 };
@@ -110,7 +164,7 @@ const HostelerDashboard = () => {
 // Sub-components
 const Header = ({ user, navigate }) => {
   const handleLogout = () => {
-    localStorage.removeItem('currentUser');
+    sessionStorage.removeItem('currentUser');
     toast.success("Successfully logged out");
     navigate('/login');
   };
@@ -143,12 +197,61 @@ const Header = ({ user, navigate }) => {
   );
 };
 
-const WelcomeBanner = ({ user }) => (
-  <motion.div variants={itemVariants} className="mb-10">
-    <h2 className="text-4xl lg:text-5xl font-black text-gray-900 tracking-tight">
-      Hi, <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-green-500">{user?.name?.split(' ')[0]}! 👋</span>
-    </h2>
-    <p className="text-gray-500 text-lg font-medium mt-2">What home-cooked meal are you craving today?</p>
+const WelcomeBanner = ({ user, onRequestCustom }) => (
+  <motion.div variants={itemVariants} className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div>
+      <h2 className="text-4xl lg:text-5xl font-black text-gray-900 tracking-tight">
+        Hi, <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-green-500">{user?.name?.split(' ')[0]}! 👋</span>
+      </h2>
+      <p className="text-gray-500 text-lg font-medium mt-2">What home-cooked meal are you craving today?</p>
+    </div>
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={onRequestCustom}
+      className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-6 py-3.5 rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 text-base transition-all"
+    >
+      Request Custom Meal 🍲
+    </motion.button>
+  </motion.div>
+);
+
+const MyCustomRequests = ({ requests, onCancel }) => (
+  <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 relative overflow-hidden">
+    <h3 className="text-xl font-black text-gray-900 flex items-center gap-3 mb-6">
+      <span className="bg-orange-100 text-orange-600 text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest ring-1 ring-orange-200">LIVE</span>
+      My Custom Requests
+    </h3>
+    {requests.length === 0 ? (
+      <div className="text-center py-6 px-4 bg-gray-50 rounded-2xl border border-gray-100 border-dashed">
+        <p className="text-gray-400 text-sm font-medium">No custom requests active.<br/>Can't find a dish? Request it!</p>
+      </div>
+    ) : (
+      <ul className="space-y-4 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+        {requests.map((req) => (
+          <li key={req._id} className="p-4 bg-gray-50 border border-gray-100 rounded-2xl flex flex-col justify-between gap-3 group hover:border-orange-200 transition-colors">
+            <div>
+              <p className="font-black text-base text-gray-800 leading-tight mb-1">{req.dishName}</p>
+              {req.description && <p className="text-xs text-gray-500 font-medium italic mb-2">"{req.description}"</p>}
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 font-semibold">
+                <span className="flex items-center gap-1"><FiMapPin className="text-gray-400" /> {req.deliveryLocation}</span>
+                <span className="flex items-center gap-1"><FiClock className="text-gray-400" /> {req.neededBy}</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t border-gray-100/50">
+              <span className="font-black text-emerald-600 text-lg">₹{req.price}</span>
+              <button 
+                type="button"
+                onClick={() => onCancel(req._id)}
+                className="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    )}
   </motion.div>
 );
 
