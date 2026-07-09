@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const user = JSON.parse(sessionStorage.getItem('currentUser'));
 
   useEffect(() => {
     if (!user || !user.role) {

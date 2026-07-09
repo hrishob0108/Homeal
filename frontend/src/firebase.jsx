@@ -1,6 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+import api from "./services/api";
+import toast from "react-hot-toast";
 
 const firebaseConfig = {
   apiKey: "AIzaSyACU6qzo6IheSDPQBKzYLzqNo0jF3rPJmI",
@@ -20,15 +22,29 @@ function GOO() {
 
   const sign = () => {
     signInWithPopup(auth, provider)
-      .then((res) => {
+      .then(async (res) => {
         const userData = {
           name: res.user.displayName,
           email: res.user.email,
           photo: res.user.photoURL,
         };
 
-        localStorage.setItem("googleUser", JSON.stringify(userData));
-        navigate("/select-role"); // Always route to SelectRole to mint the token
+        try {
+          // Attempt auth with backend without specifying role to see if user exists
+          const response = await api.post("/auth/google", { name: userData.name, email: userData.email });
+          if (response.status === 200 || response.status === 201) {
+            sessionStorage.setItem("currentUser", JSON.stringify(response.data));
+            navigate("/dashboard");
+          }
+        } catch (err) {
+          if (err.response && err.response.status === 400 && err.response.data.message === "Role is required for new Google users") {
+            sessionStorage.setItem("googleUser", JSON.stringify(userData));
+            navigate("/select-role");
+          } else {
+            console.error("Google Sign-In Auth Error:", err);
+            toast.error(err.response?.data?.message || "Failed to authenticate with backend.");
+          }
+        }
       })
       .catch((err) => console.error("Google Sign-In Error:", err));
   };

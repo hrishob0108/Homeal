@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiHome, FiBriefcase } from "react-icons/fi";
@@ -16,7 +16,15 @@ const itemVariants = {
 
 const SelectRole = () => {
   const navigate = useNavigate();
-  const googleUser = JSON.parse(localStorage.getItem("googleUser")) || { name: "Student" };
+  const googleUserString = sessionStorage.getItem("googleUser");
+
+  useEffect(() => {
+    if (!googleUserString) {
+      navigate("/login");
+    }
+  }, [googleUserString, navigate]);
+
+  const googleUser = googleUserString ? JSON.parse(googleUserString) : { name: "Student" };
 
   const handleRoleSelection = async (role) => {
     try {
@@ -24,7 +32,7 @@ const SelectRole = () => {
       const data = response.data;
       
       if(response.status === 200 || response.status === 201) {
-         localStorage.setItem("currentUser", JSON.stringify(data));
+         sessionStorage.setItem("currentUser", JSON.stringify(data));
          navigate(`/${role}-dashboard`);
       } else {
          console.error(data.message);

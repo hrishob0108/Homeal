@@ -9,6 +9,7 @@ const mealRoutes = require("./routes/mealRoutes")
 const authRoutes = require("./routes/authRoutes")
 const otpRoutes = require("./routes/otpRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+const foodRequestRoutes = require("./routes/foodRequestRoutes");
 
 dotenv.config(); 
 
@@ -22,6 +23,11 @@ const io = new Server(server, {
     origin: process.env.FRONTEND_URL || "*", // Allow all in dev, restrict in prod
     methods: ["GET", "POST"]
   }
+});
+
+app.use((req, res, next) => {
+  req.io = io;
+  next();
 });
 
 connectDB();
@@ -56,6 +62,7 @@ app.use("/api/meals",mealRoutes);
 app.use("/api/auth",authRoutes);
 app.use("/api/auth", otpRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/food-requests", foodRequestRoutes);
 
 server.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
