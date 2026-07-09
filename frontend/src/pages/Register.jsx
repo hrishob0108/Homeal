@@ -54,8 +54,8 @@ const Register = () => {
         const response = await api.post("/auth/register", formData);
         const data = response.data;
         if (response.status === 200 || response.status === 201) {
-          localStorage.setItem("user", JSON.stringify(data));
-          localStorage.setItem("currentUser", JSON.stringify(data));
+          sessionStorage.setItem("user", JSON.stringify(data));
+          sessionStorage.setItem("currentUser", JSON.stringify(data));
           navigate("/dashboard");
         } else {
           setErrors({ api: data.message || "Registration failed" });

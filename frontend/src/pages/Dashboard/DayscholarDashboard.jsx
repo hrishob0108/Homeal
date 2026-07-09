@@ -7,6 +7,7 @@ import { FaRupeeSign, FaFire } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import { useSocket } from '../../context/SocketContext';
 
 // Animation configs
 const containerVariants = {
@@ -21,16 +22,26 @@ const itemVariants = {
 
 const DayscholarDashboard = () => {
   const navigate = useNavigate();
+  const socket = useSocket();
   const wid = useRef();
   const [url, setUrl] = useState("");
   const [requests, setRequests] = useState([]);
   const [myMenu, setMyMenu] = useState([]);
+  const [customRequests, setCustomRequests] = useState([]);
   
-  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const user = JSON.parse(sessionStorage.getItem('currentUser'));
   
   useEffect(() => {
     if(!user || !user.token) {
       navigate('/login');
+      return;
+    }
+    if (user.role !== 'dayscholar') {
+      if (user.role === 'hosteler') {
+        navigate('/hosteler-dashboard');
+      } else {
+        navigate('/login');
+      }
       return;
     }
     fetchDashboardData();
@@ -48,6 +59,46 @@ const DayscholarDashboard = () => {
     wid.current = myWidget;
   }, []);
 
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewOrderRequest = (newOrder) => {
+      toast.success(`New order request: ${newOrder.dishName}!`);
+      fetchDashboardData();
+    };
+
+    const handleOrderStatusUpdated = (updatedOrder) => {
+      fetchDashboardData();
+    };
+
+    const handleNewFoodRequest = (newRequest) => {
+      toast.success(`New custom food request: ${newRequest.dishName}! 📣`);
+      setCustomRequests(prev => [newRequest, ...prev]);
+    };
+
+    const handleFoodRequestCancelled = ({ id }) => {
+      setCustomRequests(prev => prev.filter(r => r._id !== id));
+    };
+
+    const handleFoodRequestAccepted = ({ id }) => {
+      setCustomRequests(prev => prev.filter(r => r._id !== id));
+    };
+
+    socket.on('new_order_request', handleNewOrderRequest);
+    socket.on('order_status_updated', handleOrderStatusUpdated);
+    socket.on('new_food_request', handleNewFoodRequest);
+    socket.on('food_request_cancelled', handleFoodRequestCancelled);
+    socket.on('food_request_accepted', handleFoodRequestAccepted);
+
+    return () => {
+      socket.off('new_order_request', handleNewOrderRequest);
+      socket.off('order_status_updated', handleOrderStatusUpdated);
+      socket.off('new_food_request', handleNewFoodRequest);
+      socket.off('food_request_cancelled', handleFoodRequestCancelled);
+      socket.off('food_request_accepted', handleFoodRequestAccepted);
+    };
+  }, [socket]);
+
   const fetchDashboardData = async () => {
     try {
       // 1. Fetch Orders requested from this seller
@@ -57,9 +108,26 @@ const DayscholarDashboard = () => {
       // 2. Fetch all meals and filter by my id locally
       const resMeals = await api.get('/meals');
       setMyMenu(resMeals.data.filter(m => m.createdBy === user._id));
+
+      // 3. Fetch pending custom food requests
+      const resPendingRequests = await api.get('/food-requests/pending');
+      setCustomRequests(resPendingRequests.data);
     } catch (err) {
       console.error(err);
       toast.error("Failed to load dashboard data");
+    }
+  };
+
+  const handleAcceptRequest = async (requestId) => {
+    try {
+      const res = await api.put(`/food-requests/${requestId}/accept`);
+      if (res.status === 200) {
+        toast.success("Request accepted! Start cooking.");
+        fetchDashboardData();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to accept request.");
     }
   };
 
@@ -127,6 +195,7 @@ const DayscholarDashboard = () => {
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
               <NewFoodRequests requests={newRequests} onUpdateStatus={handleUpdateStatus} />
+              <CustomFoodRequestsFeed requests={customRequests} onAccept={handleAcceptRequest} />
               <ActiveDeliveries deliveries={activeDeliveries} wid={wid} url={url} onUpdateStatus={handleUpdateStatus} onUploadProof={handleUploadProof} />
             </div>
             <div className="space-y-8">
@@ -144,7 +213,7 @@ const DayscholarDashboard = () => {
 // Sub Components
 const Header = ({ user, navigate }) => {
   const handleLogout = () => {
-    localStorage.removeItem('currentUser');
+    sessionStorage.removeItem('currentUser');
     toast.success("Logged out successfully");
     navigate('/login');
   };
@@ -455,6 +524,50 @@ const RecentReviews = () => (
         <h3 className="text-xl font-black flex items-center gap-3 mb-6"><div className="p-2 bg-pink-100 rounded-lg text-pink-500"><FiSmile /></div> Community Love</h3>
         <p className="text-gray-500 mb-2">"Amazing rajma! Tasted just like home 🥰" <br/><span className="text-xs font-bold text-gray-400">- Priya P.</span></p>
     </motion.div>
+);
+
+const CustomFoodRequestsFeed = ({ requests, onAccept }) => (
+  <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50">
+    <div className="flex justify-between items-center mb-6">
+      <h3 className="text-2xl font-black text-gray-900 flex items-center gap-3">
+        <span className="bg-orange-100 text-orange-600 text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest ring-1 ring-orange-200">FEED</span>
+        Custom Requests from Hostelers
+      </h3>
+    </div>
+    <div className="space-y-4">
+      {requests.length === 0 ? (
+        <p className="text-gray-400 font-medium">No custom food requests from hostelers right now. Check back soon!</p>
+      ) : (
+        requests.map((req) => (
+          <motion.div key={req._id} whileHover={{ scale: 1.01 }} className="border border-gray-100 p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 bg-white hover:border-emerald-200 transition-colors shadow-sm group">
+            <div className="flex-1">
+              <p className="font-black text-xl text-gray-900 mb-1">{req.dishName}</p>
+              {req.description && <p className="text-sm text-gray-500 font-medium italic mb-2">"{req.description}"</p>}
+              <div className="space-y-1">
+                <p className="text-sm text-gray-600 font-medium flex items-center gap-2">
+                  <FiMapPin className="text-gray-400 group-hover:text-emerald-500" /> By <span className="font-bold">{req.buyerName}</span> @ {req.deliveryLocation}
+                </p>
+                <p className="text-sm text-gray-600 font-medium flex items-center gap-2">
+                  <FiClock className="text-gray-400 group-hover:text-emerald-500" /> Needed by <span className="font-bold">{req.neededBy}</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+              <span className="text-xl font-black text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl ring-1 ring-emerald-200 mr-2">₹{req.price}</span>
+              <motion.button 
+                onClick={() => onAccept(req._id)} 
+                whileHover={{ scale: 1.05 }} 
+                whileTap={{ scale: 0.95 }} 
+                className="px-5 py-2.5 font-black text-white bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl shadow-lg hover:shadow-emerald-500/20"
+              >
+                Accept &amp; Cook 🍳
+              </motion.button>
+            </div>
+          </motion.div>
+        ))
+      )}
+    </div>
+  </motion.div>
 );
 
 export default DayscholarDashboard;
