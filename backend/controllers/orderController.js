@@ -11,16 +11,6 @@ const createOrder = async (req, res) => {
   }
 
   try {
-    // Prevent duplicate active orders
-    const activeOrder = await Order.findOne({
-       buyerId: req.user._id,
-       status: { $nin: ["Delivered", "Declined"] }
-    });
-
-    if (activeOrder) {
-       return res.status(400).json({ message: "You already have an active order." });
-    }
-
     const order = new Order({
       buyerId: req.user._id,
       buyerName: req.user.name,
