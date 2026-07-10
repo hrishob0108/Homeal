@@ -10,6 +10,7 @@ const authRoutes = require("./routes/authRoutes")
 const otpRoutes = require("./routes/otpRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const foodRequestRoutes = require("./routes/foodRequestRoutes");
+const reviewRoutes = require("./routes/reviewRoutes");
 
 dotenv.config(); 
 
@@ -63,6 +64,7 @@ app.use("/api/auth",authRoutes);
 app.use("/api/auth", otpRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/food-requests", foodRequestRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 server.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);

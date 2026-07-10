@@ -7,6 +7,7 @@ const mealSchema = new mongoose.Schema(
     price: { type: Number, required: true, default: 0 },
     image: { type: String, default: "" }, // Cloudinary URL
     tag: { type: String, default: "New" }, // e.g., "Bestseller", "New"
+    isVeg: { type: Boolean, default: true },
     cookName: { type: String, required: true }, // Denormalized for fast reads
     rating: { type: Number, default: 4.8 }, // Static default for aesthetic
     createdBy: {

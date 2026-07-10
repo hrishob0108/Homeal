@@ -1,354 +1,367 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { FaUtensils, FaCheckCircle, FaStar, FaArrowRight, FaMapMarkerAlt, FaHeart } from "react-icons/fa";
-import { FiChevronRight, FiShield, FiClock, FiUsers } from "react-icons/fi";
-
-const Marquee = () => {
-  return (
-    <div className="w-full bg-green-500 overflow-hidden py-4 rotate-[-1deg] scale-105 my-12 z-20 relative shadow-[0_10px_40px_rgba(34,197,94,0.3)] border-y border-green-400">
-      <motion.div
-        className="flex whitespace-nowrap text-white font-black text-xl md:text-2xl uppercase tracking-widest gap-8"
-        animate={{ x: [0, -1000] }}
-        transition={{ ease: "linear", duration: 25, repeat: Infinity }}
-      >
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="flex items-center gap-8">
-            <span>Home Cooked Love</span>
-            <span>✦</span>
-            <span>Dayscholar Delivered</span>
-            <span>✦</span>
-            <span>No More Mess Food</span>
-            <span>✦</span>
-          </div>
-        ))}
-      </motion.div>
-    </div>
-  );
-};
-
-const RotatingWord = () => {
-  const words = ["Love 💚", "Community 🤝", "Care 🏡"];
-  const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIndex((prev) => (prev + 1) % words.length);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className="relative inline-flex items-end justify-center w-[320px] sm:w-[480px] lg:w-[650px] h-[1.2em] overflow-hidden translate-y-[10%] mt-2 sm:mt-4">
-      <AnimatePresence>
-        <motion.span
-          key={words[index]}
-          initial={{ y: "100%", opacity: 0, x: "-50%" }}
-          animate={{ y: "0%", opacity: 1, x: "-50%" }}
-          exit={{ y: "-100%", opacity: 0, x: "-50%" }}
-          transition={{ duration: 0.6, ease: "backInOut" }}
-          className="absolute left-1/2 bottom-0 text-transparent bg-clip-text bg-gradient-to-r from-green-500 to-emerald-700 whitespace-nowrap pb-2 text-center"
-        >
-          {words[index]}
-        </motion.span>
-      </AnimatePresence>
-    </div>
-  );
-};
+import { motion, AnimatePresence } from "framer-motion";
+import { FaUtensils, FaStar, FaArrowRight, FaPlay, FaHeart } from "react-icons/fa";
+import { FiUserPlus, FiEdit, FiBell, FiAward, FiEye, FiZap, FiCheck, FiChevronRight } from "react-icons/fi";
 
 const Home = () => {
-  const { scrollYProgress } = useScroll();
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.15, delayChildren: 0.1 } }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 20 } }
+  };
 
   return (
-    <div className="bg-[#FFFBF7] bg-dot-pattern min-h-screen font-sans text-gray-900 overflow-x-hidden">
+    <div className="bg-cream bg-dot-pattern min-h-screen font-sans text-espresso overflow-x-hidden pb-12 selection:bg-primary/20 selection:text-primary">
 
       {/* FLOATING PILL NAVBAR */}
       <motion.nav
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, type: "spring", bounce: 0.4 }}
-        className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] max-w-5xl bg-white/70 backdrop-blur-2xl rounded-full px-6 py-4 shadow-[0_15px_40px_rgba(0,0,0,0.06)] border border-white/50 z-50 flex justify-between items-center"
+        className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] max-w-5xl bg-white/80 backdrop-blur-2xl rounded-full px-6 py-3.5 shadow-[0_15px_40px_rgba(60,34,34,0.04)] border border-white/60 z-50 flex justify-between items-center"
       >
         <div className="flex items-center gap-3 cursor-pointer group">
-          <div className="bg-green-100 p-2 rounded-full group-hover:bg-green-500 transition-colors">
-            <FaUtensils className="text-green-600 group-hover:text-white transition-colors text-xl" />
+          <div className="bg-primary/10 p-2.5 rounded-full group-hover:bg-primary transition-colors duration-300">
+            <FaUtensils className="text-primary group-hover:text-white transition-colors text-lg" />
           </div>
-          <span className="text-2xl font-black tracking-tight text-gray-800">Foodler</span>
+          <span className="text-2xl font-serif font-black tracking-tight text-espresso">Cravyo</span>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-6">
-          <Link to="/login" className="hidden sm:block font-bold text-gray-500 hover:text-green-600 transition-colors">
+          <Link to="/login" className="px-4 py-2 font-black text-espresso-light hover:text-primary transition-colors text-sm sm:text-base cursor-pointer">
             Log In
           </Link>
           <Link to="/register">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-gray-900 text-white px-6 py-2.5 rounded-full font-bold shadow-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+              className="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-full font-black shadow-lg hover:shadow-primary/25 transition-all cursor-pointer text-sm sm:text-base"
             >
-              Start Sharing
+              Get Started
             </motion.button>
           </Link>
         </div>
       </motion.nav>
 
-      {/* MASSIVE CENTERPIECE HERO */}
-      <section className="relative w-full min-h-[95vh] flex flex-col items-center justify-start pt-32 sm:pt-40 overflow-hidden px-4">
+      {/* HERO SECTION */}
+      <section className="relative w-full min-h-[92vh] flex items-center justify-center pt-32 sm:pt-36 px-4 sm:px-8 lg:px-16 max-w-7xl mx-auto">
+        {/* Abstract Theme Blobs */}
+        <div className="absolute top-[10%] left-[5%] w-[35vw] h-[35vw] bg-primary/5 rounded-full blur-[120px] pointer-events-none z-0" />
+        <div className="absolute bottom-[10%] right-[5%] w-[35vw] h-[35vw] bg-secondary/10 rounded-full blur-[120px] pointer-events-none z-0" />
 
-        {/* Abstract Background Highlights */}
-        <div className="absolute top-[20%] left-[20%] w-[30vw] h-[30vw] bg-green-200/40 rounded-full blur-[100px] z-0" />
-        <div className="absolute top-[40%] right-[10%] w-[40vw] h-[40vw] bg-yellow-100/40 rounded-full blur-[120px] z-0" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center w-full z-10">
+          
+          {/* Left Hero Column */}
+          <div className="lg:col-span-7 relative flex flex-col items-start text-left">
+            {/* Flower details matching screenshot */}
+            <span className="absolute -top-16 left-12 text-primary/20 text-3xl select-none animate-spin-slow">✿</span>
+            <span className="absolute top-1/3 -left-8 text-secondary/30 text-2xl select-none animate-bounce-slow">🍃</span>
+            <span className="absolute bottom-12 right-20 text-primary/30 text-2xl select-none">✿</span>
 
-        <motion.div style={{ opacity: heroOpacity }} className="text-center z-20 max-w-5xl">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2, type: "spring" }}
-            className="inline-flex items-center gap-2 bg-green-50 border border-green-200 px-4 py-2 rounded-full mb-8"
-          >
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-            </span>
-            <span className="text-green-700 font-bold text-sm tracking-wide">Foodler is now active on campus!</span>
-          </motion.div>
-
-          <h1 className="text-5xl sm:text-7xl lg:text-[6.5rem] font-black tracking-tighter leading-[1] text-gray-900 mb-8 mx-auto flex flex-col justify-center items-center">
-            <span>Taste Comfort.</span>
-            <span>Share</span>
-            <RotatingWord />
-          </h1>
-
-          <p className="text-lg sm:text-2xl text-gray-500 font-medium max-w-2xl mx-auto mb-10 leading-relaxed">
-            Connect with dayscholars to get authentic, hot homemade meals delivered right to your hostel.
-          </p>
-
-          <Link to="/register">
-            <motion.button
-              whileHover={{ scale: 1.03, y: -2 }}
-              whileTap={{ scale: 0.97 }}
-              className="group bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 px-10 py-5 rounded-full text-white text-xl font-black shadow-[0_20px_40px_-10px_rgba(34,197,94,0.5)] transition-all flex items-center gap-4 mx-auto"
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="mb-8"
             >
-              Get Your First Meal
-              <FaArrowRight className="group-hover:translate-x-1 transition-transform" />
-            </motion.button>
-          </Link>
-        </motion.div>
-
-        {/* Floating 3D Image & Badges */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 100 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.4, type: "spring" }}
-          className="relative mt-20 lg:mt-8 w-full max-w-2xl lg:max-w-3xl flex justify-center z-10"
-        >
-          <motion.img
-            animate={{ y: [-15, 10, -15], rotate: [-1, 1, -1] }}
-            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            src="/hero-meal.png"
-            alt="Futuristic Floating Meal"
-            className="w-full h-auto drop-shadow-[0_45px_45px_rgba(34,197,94,0.15)] relative z-10"
-          />
-
-          {/* Floating Badge 1 */}
-          <motion.div
-            animate={{ y: [-10, 10, -10] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="absolute top-[20%] left-[5%] sm:left-[-5%] bg-white/90 backdrop-blur-md px-6 py-4 rounded-3xl shadow-[0_20px_40px_rgba(0,0,0,0.08)] border border-gray-100 flex items-center gap-3 z-20"
-          >
-            <div className="bg-green-100 p-3 rounded-full">
-              <FaCheckCircle className="text-green-500 text-xl" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Verified</p>
-              <p className="text-lg font-black text-gray-800">Dayscholars</p>
-            </div>
-          </motion.div>
-
-          {/* Floating Badge 2 */}
-          <motion.div
-            animate={{ y: [10, -10, 10] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-            className="absolute bottom-[20%] right-[5%] sm:right-[-10%] bg-white/90 backdrop-blur-md px-6 py-4 rounded-3xl shadow-[0_20px_40px_rgba(0,0,0,0.08)] border border-gray-100 flex flex-col items-center gap-1 z-20"
-          >
-            <div className="flex gap-1">
-              {[...Array(5)].map((_, i) => <FaStar key={i} className="text-yellow-400 text-xl" />)}
-            </div>
-            <p className="text-sm font-bold text-gray-500 mt-1">4.9/5 Average Rating</p>
-          </motion.div>
-        </motion.div>
-      </section>
-
-      {/* MARQUEE BANNER */}
-      <Marquee />
-
-      {/* BENTO BOX GRID FEATURES */}
-      <section className="py-24 px-6 md:px-16 max-w-7xl mx-auto relative z-10">
-        <div className="mb-16">
-          <h2 className="text-4xl sm:text-6xl font-black tracking-tight text-gray-900 leading-tight">
-            Stop eating mess food. <br />
-            <span className="text-gray-400">Start eating real food.</span>
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[280px]">
-
-          {/* Main Large Box */}
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            className="md:col-span-2 row-span-2 bg-[#1A1A1A] rounded-[2.5rem] p-10 flex flex-col justify-between relative overflow-hidden group shadow-2xl shadow-green-900/10"
-          >
-            <div className="absolute inset-0 bg-gradient-to-tr from-green-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-green-500/20 rounded-full blur-3xl" />
-
-            <div className="z-10">
-              <div className="bg-white/10 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/5">
-                <FiShield className="text-green-400 text-3xl" />
-              </div>
-              <h3 className="text-4xl text-white font-black leading-tight mb-4">
-                Trust & Safety <br /> Built-in.
-              </h3>
-              <p className="text-gray-400 text-lg max-w-md font-medium leading-relaxed">
-                Every meal is rated and reviewed by your peers. Our dayscholar verification ensures you only get food from trusted community members.
+              <h1 className="text-5xl sm:text-7xl font-serif font-black text-espresso tracking-tight leading-[1.1] mb-6">
+                Craving <br />
+                <span className="text-primary">Ghar Ka Khana?</span> <br />
+                We've Got You!
+              </h1>
+              <p className="text-espresso-light text-lg sm:text-xl font-medium max-w-xl leading-relaxed">
+                Connecting hostelers with dayscholars who bring fresh, home-cooked meals. Taste the love of home, right at your campus.
               </p>
-            </div>
-          </motion.div>
+            </motion.div>
 
-          {/* Small Box 1 */}
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ delay: 0.1 }}
-            className="md:col-span-1 row-span-1 bg-white rounded-[2.5rem] p-8 relative overflow-hidden shadow-xl shadow-green-100/50 border border-green-50 flex flex-col justify-center"
-          >
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-2xl text-gray-900 font-extrabold leading-tight">Lightning <br /> Fast</h3>
-              <div className="bg-green-100 p-3 rounded-xl">
-                <FiClock className="text-green-600 text-2xl" />
-              </div>
-            </div>
-            <p className="text-gray-500 font-medium">Coordinate drop-offs during college breaks or lunch hours instantly.</p>
-          </motion.div>
+            {/* CTAs */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex flex-wrap items-center gap-6 mb-12 w-full sm:w-auto"
+            >
+              <Link to="/register" className="w-full sm:w-auto">
+                <motion.button
+                  whileHover={{ scale: 1.03, y: -2 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="w-full bg-primary hover:bg-primary-hover text-white px-9 py-4.5 rounded-2xl font-black text-lg shadow-[0_15px_30px_rgba(168,68,68,0.2)] hover:shadow-[0_15px_30px_rgba(168,68,68,0.3)] transition-all cursor-pointer flex items-center justify-center gap-3"
+                >
+                  Get Started
+                  <FaArrowRight className="text-sm" />
+                </motion.button>
+              </Link>
+              
+              <a 
+                href="#how-it-works" 
+                className="flex items-center justify-center gap-3 font-black text-espresso hover:text-primary transition-colors group cursor-pointer w-full sm:w-auto py-3.5"
+              >
+                <span className="w-11 h-11 rounded-full border-2 border-espresso/15 group-hover:border-primary flex items-center justify-center text-sm transition-colors bg-white shadow-sm">
+                  <FaPlay className="text-[10px] translate-x-[1px]" />
+                </span>
+                How It Works
+              </a>
+            </motion.div>
 
-          {/* Small Box 2 */}
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ delay: 0.2 }}
-            className="md:col-span-1 row-span-1 bg-gradient-to-br from-green-400 to-emerald-600 rounded-[2.5rem] p-8 relative overflow-hidden shadow-xl shadow-green-500/20 flex flex-col justify-end text-white"
-          >
-            <div className="absolute -top-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
-            <FiUsers className="text-white/80 text-5xl mb-4" />
-            <h3 className="text-3xl font-black mb-2">Community Driven</h3>
-            <p className="text-green-50 text-sm font-medium">Build lasting friendships over shared homemade meals.</p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* VERTICAL TIMELINE: HOW IT WORKS */}
-      <section className="py-24 px-6 md:px-16 relative bg-white border-y border-gray-100 mt-12">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-gray-900 mb-4">How Foodler Works</h2>
-            <p className="text-xl text-gray-500 font-medium">From craving to eating in three easy steps.</p>
+            {/* Verification Stats */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="flex flex-wrap items-center gap-y-4 gap-x-8 text-sm sm:text-base font-black text-espresso-light/80 border-t border-primary/10 pt-8 w-full"
+            >
+              <span className="flex items-center gap-2"><FiUserPlus className="text-primary text-lg" /> 2,000+ Students</span>
+              <span className="flex items-center gap-2 text-secondary"><FaStar className="text-secondary text-lg" /> 4.9 Rating</span>
+              <span className="flex items-center gap-2"><FaUtensils className="text-primary text-lg" /> 500+ Meals Shared</span>
+            </motion.div>
           </div>
 
-          <div className="relative">
-            {/* The line */}
-            <div className="absolute left-[39px] md:left-1/2 top-4 bottom-4 w-1 bg-green-100 md:-translate-x-1/2 z-0 rounded-full" />
+          {/* Right Hero Column - Circular Artwork Centerpiece */}
+          <div className="lg:col-span-5 flex justify-center items-center relative py-10 lg:py-0">
+            <span className="absolute -top-4 right-1/4 text-secondary/30 text-3xl select-none animate-spin-slow">✿</span>
+            <span className="absolute bottom-6 left-12 text-secondary/40 text-2xl select-none animate-bounce-slow">🍃</span>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              transition={{ duration: 1, type: "spring" }}
+              className="relative w-72 sm:w-96 lg:w-[28rem] h-72 sm:h-96 lg:h-[28rem]"
+            >
+              {/* Outer decorative dashed circle representing thali boundary */}
+              <div className="absolute inset-0 rounded-full border-4 border-dashed border-primary/20 animate-spin-slow z-0" />
+              
+              {/* Floating meal illustration */}
+              <motion.img
+                animate={{ y: [-15, 12, -15], rotate: [-0.5, 0.5, -0.5] }}
+                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                src="/hero-meal.png"
+                alt="Traditional Cravyo ThaliPlatter"
+                className="w-full h-full object-contain relative z-10 drop-shadow-[0_25px_35px_rgba(168,68,68,0.2)]"
+              />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* HOW CRAVYO WORKS SECTION */}
+      <section id="how-it-works" className="py-28 px-4 sm:px-8 lg:px-16 max-w-7xl mx-auto relative z-10">
+        <div className="text-center mb-20">
+          <span className="absolute top-10 left-12 text-primary/10 text-4xl select-none">✿</span>
+          <h2 className="text-4xl sm:text-5xl font-serif font-black text-espresso mb-4">How Cravyo Works</h2>
+          <p className="text-lg sm:text-xl font-bold text-secondary tracking-wide uppercase">From craving to eating — it's just four simple steps</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center max-w-6xl mx-auto">
+          
+          {/* Timeline Cartoon Graphic (Left Column) */}
+          <div className="lg:col-span-6 flex justify-center relative">
+            <span className="absolute -top-12 left-4 text-primary/20 text-3xl select-none">✿</span>
+            <span className="absolute bottom-4 right-12 text-secondary/30 text-2xl select-none">🍃</span>
+
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.8 }}
+              className="bg-white/60 backdrop-blur-md border border-white p-6 rounded-[2.5rem] shadow-xl w-full max-w-md relative overflow-hidden flex flex-col items-center"
+            >
+              {/* Background gradient disk */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-sage/40 rounded-full blur-3xl z-0 pointer-events-none" />
+
+              {/* Handoff Vector Mockup Box */}
+              <div className="relative z-10 flex items-center justify-center w-full h-80">
+                {/* Boy Avatar */}
+                <motion.div 
+                  animate={{ y: [-4, 4, -4] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  className="flex flex-col items-center"
+                >
+                  <div className="w-24 h-24 rounded-full bg-secondary/15 border-2 border-secondary flex items-center justify-center text-4xl overflow-hidden shadow-md">
+                    👦
+                  </div>
+                  <span className="mt-2 text-xs font-black bg-secondary/10 text-espresso px-2 py-0.5 rounded-full uppercase">Hosteler</span>
+                </motion.div>
+
+                {/* Handing Over Tiffin Container Animation */}
+                <motion.div 
+                  animate={{ scale: [0.95, 1.05, 0.95], x: [-10, 10, -10] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  className="flex flex-col items-center justify-center mx-4"
+                >
+                  <span className="text-4xl filter drop-shadow">🍱</span>
+                  <span className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">Fresh delivery</span>
+                  <div className="w-16 h-0.5 border-t-2 border-dashed border-primary/40 mt-1" />
+                </motion.div>
+
+                {/* Girl Avatar */}
+                <motion.div 
+                  animate={{ y: [4, -4, 4] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                  className="flex flex-col items-center"
+                >
+                  <div className="w-24 h-24 rounded-full bg-primary/15 border-2 border-primary flex items-center justify-center text-4xl overflow-hidden shadow-md">
+                    👧
+                  </div>
+                  <span className="mt-2 text-xs font-black bg-primary/10 text-primary px-2 py-0.5 rounded-full uppercase">Dayscholar</span>
+                </motion.div>
+              </div>
+
+              {/* Custom micro interaction button */}
+              <div className="w-full text-center border-t border-primary/10 pt-4 relative z-10">
+                <p className="text-sm font-bold text-espresso-light">Peer-to-peer campus food sharing network</p>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Timeline Text Steps (Right Column) */}
+          <div className="lg:col-span-6 space-y-8 relative">
+            {/* Dashed vertical progress indicator line */}
+            <div className="absolute left-[28px] top-6 bottom-6 w-0.5 border-l-2 border-dashed border-primary/20 z-0" />
 
             {[
               {
-                step: "01",
-                title: "Post a Request",
-                desc: "Craving rajma chawal or missing mom's parathas? Post your meal request on the platform.",
-                icon: <FaHeart className="text-white text-xl" />,
-                align: "right"
+                step: "1",
+                title: "Sign Up",
+                desc: "Create your account as a Hosteler or Dayscholar. Quick and simple.",
+                color: "bg-primary",
+                icon: <FiUserPlus className="text-white text-lg" />
               },
               {
-                step: "02",
-                title: "Dayscholar Connects",
-                desc: "A friendly dayscholar accepts your request and brings an extra portion from their home.",
-                icon: <FiUsers className="text-white text-xl" />,
-                align: "left"
+                step: "2",
+                title: "Request or Offer",
+                desc: "Hostelers post food requests. Dayscholars browse and accept.",
+                color: "bg-secondary",
+                icon: <FiEdit className="text-white text-lg" />
               },
               {
-                step: "03",
-                title: "Meet & Eat",
-                desc: "Meet up safely on campus, pay securely through the app, and enjoy a taste of home.",
-                icon: <FaMapMarkerAlt className="text-white text-xl" />,
-                align: "right"
+                step: "3",
+                title: "Get Notified",
+                desc: "Real-time notification when someone accepts your request.",
+                color: "bg-primary",
+                icon: <FiBell className="text-white text-lg" />
+              },
+              {
+                step: "4",
+                title: "Share & Enjoy",
+                desc: "Meet, share the meal, rate the experience. Simple!",
+                color: "bg-secondary",
+                icon: <FiCheck className="text-white text-lg" />
               }
-            ].map((item, index) => (
+            ].map((item, idx) => (
               <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                className={`relative flex flex-col md:flex-row items-center mb-16 last:mb-0 z-10 ${item.align === "left" ? "md:flex-row-reverse" : ""}`}
+                key={idx}
+                initial={{ opacity: 0, x: 30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                className="flex items-start gap-6 relative z-10 group"
               >
-                {/* Visual Step Marker */}
-                <div className="absolute left-6 md:left-1/2 md:-translate-x-1/2 w-8 h-8 md:w-16 md:h-16 rounded-full bg-green-500 border-4 border-white shadow-lg flex items-center justify-center shrink-0">
-                  <span className="hidden md:block">{item.icon}</span>
+                {/* Step Circle */}
+                <div className={`w-14 h-14 rounded-2xl ${item.color} shadow-lg flex flex-shrink-0 items-center justify-center transition-transform duration-300 group-hover:scale-110`}>
+                  {item.icon}
                 </div>
 
-                {/* Content */}
-                <div className={`w-full md:w-1/2 pl-20 md:pl-0 ${item.align === "left" ? "md:pr-16 text-left md:text-right" : "md:pl-16 text-left"}`}>
-                  <p className="text-green-500 font-black text-6xl opacity-20 absolute -top-4 -left-2 md:opacity-100 md:relative md:top-0 md:left-0 md:mb-2">{item.step}</p>
-                  <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-3">{item.title}</h3>
-                  <p className="text-gray-500 text-lg font-medium leading-relaxed">{item.desc}</p>
+                {/* Text Content */}
+                <div className="bg-white/40 group-hover:bg-white/80 transition-colors p-5 rounded-2xl border border-white/50 w-full">
+                  <span className="text-[10px] font-black text-espresso/40 uppercase tracking-widest block mb-1">Step {item.step}</span>
+                  <h3 className="text-xl font-serif font-black text-espresso mb-1.5">{item.title}</h3>
+                  <p className="text-espresso-light/95 text-sm font-medium leading-relaxed">{item.desc}</p>
                 </div>
               </motion.div>
             ))}
           </div>
+
         </div>
       </section>
 
-      {/* GIANT CALL TO ACTION FOOTER */}
-      <footer className="w-full bg-green-600 rounded-t-[3rem] mt-24 px-6 py-24 sm:py-32 flex flex-col items-center justify-center text-center relative overflow-hidden z-20 shadow-[0_-20px_50px_rgba(34,197,94,0.3)]">
-        {/* Background Patterns for Footer */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-green-500 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-green-700/50 rounded-full border border-green-500/30 -translate-x-1/2 translate-y-1/2 pointer-events-none" />
+      {/* BUILT FOR STUDENTS FEATURE GRID (FOOTER WRAPPER CONTAINER) */}
+      <footer className="w-[92%] max-w-7xl bg-primary rounded-[3rem] mx-auto py-20 px-6 sm:px-12 lg:px-20 text-center relative overflow-hidden shadow-[0_20px_50px_rgba(168,68,68,0.25)]">
+        {/* Decorative background vectors */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-[80px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[35rem] h-[35rem] bg-[#933838] rounded-full border border-white/5 pointer-events-none" />
 
-        <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center">
-          <FaUtensils className="text-green-300 text-6xl mb-8" />
-          <h2 className="text-5xl sm:text-7xl font-black text-white tracking-tight leading-[1.1] mb-8">
-            Ready for a Taste of Home?
+        <div className="relative z-10 flex flex-col items-center">
+          
+          {/* Badge */}
+          <span className="bg-white text-primary px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-6 shadow-sm border border-white">
+            Why Cravyo?
+          </span>
+
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-black text-white tracking-tight leading-[1.15] mb-4 max-w-3xl">
+            Built for Students, By Students
           </h2>
-          <p className="text-xl sm:text-2xl text-green-100 font-medium mb-12 max-w-2xl">
-            Join the Foodler family today and never settle for boring campus food again.
+          <p className="text-white/80 text-lg sm:text-xl font-medium mb-16 max-w-2xl leading-relaxed">
+            Everything you need for a seamless food-sharing experience
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-            <Link to="/register" className="w-full sm:w-auto">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-full bg-white text-green-700 px-10 py-5 rounded-full font-black text-xl shadow-2xl shadow-green-900/40 hover:bg-gray-50 transition-colors"
+          {/* 6 Grid items in light sage green cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full text-left">
+            {[
+              {
+                title: "Live Menu Feed",
+                desc: "Browse freshly prepared campus dishes updated in real-time by dayscholars.",
+                icon: <FaUtensils className="text-espresso text-xl" />
+              },
+              {
+                title: "Dual Dashboards",
+                desc: "Switch between eating or cooking modes inside Hosteler and Dayscholar profiles.",
+                icon: <FiZap className="text-espresso text-xl" />
+              },
+              {
+                title: "Peer Reviews",
+                desc: "Check average scores and leave live text ratings for every meal transaction.",
+                icon: <FaStar className="text-espresso text-xl" />
+              },
+              {
+                title: "Live Sockets",
+                desc: "Experience zero page reloads with real-time socket events pushing notifications.",
+                icon: <FiBell className="text-espresso text-xl" />
+              },
+              {
+                title: "Multi-Order Tracking",
+                desc: "Follow the live preparation and delivery status of multiple concurrent orders.",
+                icon: <FiAward className="text-espresso text-xl" />
+              },
+              {
+                title: "Veg/Non-Veg Indicators",
+                desc: "Filter meals instantly with veg (🟢) and non-veg (🔴) indicators and tags.",
+                icon: <FiEye className="text-espresso text-xl" />
+              }
+            ].map((card, cidx) => (
+              <motion.div
+                key={cidx}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, delay: cidx * 0.08 }}
+                whileHover={{ y: -4 }}
+                className="bg-sage p-8 rounded-[2rem] shadow-inner relative overflow-hidden flex flex-col justify-between h-64 border border-white/10 group cursor-pointer"
               >
-                Create Account
-              </motion.button>
-            </Link>
-            <Link to="/login" className="w-full sm:w-auto">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-full bg-green-700 hover:bg-green-800 border-2 border-green-500 text-white px-10 py-5 rounded-full font-bold text-xl transition-colors"
-              >
-                Sign In
-              </motion.button>
-            </Link>
+                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-md mb-4 transition-transform duration-300 group-hover:scale-110">
+                  {card.icon}
+                </div>
+                <div>
+                  <h3 className="text-xl font-serif font-black text-espresso mb-2">{card.title}</h3>
+                  <p className="text-espresso-light text-sm font-medium leading-relaxed">{card.desc}</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
-        </div>
 
-        <p className="relative z-10 text-green-200 mt-24 text-sm font-medium uppercase tracking-widest">
-          © {new Date().getFullYear()} Foodler — Designed to share love.
-        </p>
+          {/* Small copyright signature */}
+          <div className="mt-20 border-t border-white/10 pt-8 w-full text-center flex flex-col sm:flex-row justify-between items-center gap-4">
+            <span className="text-2xl font-serif font-black text-white tracking-tight">Cravyo</span>
+            <p className="text-white/60 text-sm font-medium">
+              © {new Date().getFullYear()} Cravyo — Taste Comfort, Share Love.
+            </p>
+          </div>
+
+        </div>
       </footer>
     </div>
   );

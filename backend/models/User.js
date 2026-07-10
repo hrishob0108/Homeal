@@ -21,6 +21,10 @@ const userSchema = new mongoose.Schema({
     required: true,
     default: "dayscholar" // Default to dayscholar if not specified, though frontend requires it
   },
+  phone: {
+    type: String,
+    default: ""
+  },
 }, { timestamps: true });
 
 // Match user entered password to hashed password in database

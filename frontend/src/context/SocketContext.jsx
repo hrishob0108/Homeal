@@ -30,7 +30,9 @@ export const SocketProvider = ({ children }) => {
             const newSocket = io(socketUrl); 
             setSocket(newSocket);
 
-            newSocket.emit('join_room', user._id);
+            newSocket.on('connect', () => {
+                newSocket.emit('join_room', user._id);
+            });
 
             return () => newSocket.close();
         } else {

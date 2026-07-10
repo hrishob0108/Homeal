@@ -9,9 +9,9 @@ const generateToken = (id) => {
 // @route   POST /api/auth/register
 // @access  Public
 exports.registerUser = async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, phone } = req.body;
 
-  if (!name || !email || !password || !role) {
+  if (!name || !email || !password || !role || !phone) {
     return res.status(400).json({ message: "Please fill in all the fields." });
   }
 
@@ -25,7 +25,8 @@ exports.registerUser = async (req, res) => {
       name,
       email,
       password,
-      role
+      role,
+      phone
     });
 
     if (user) {
@@ -79,24 +80,34 @@ exports.loginUser = async (req, res) => {
 // @route   POST /api/auth/google
 // @access  Public
 exports.googleAuth = async (req, res) => {
-  const { name, email, role } = req.body;
+  const { name, email, role, phone } = req.body;
   
   try {
     let user = await User.findOne({ email });
 
     if (!user) {
       if (!role) return res.status(400).json({ message: "Role is required for new Google users" });
+      if (!phone) return res.status(400).json({ message: "Phone number is required for new Google users" });
       
       user = await User.create({
         name,
         email,
         password: "GoogleAuthPlaceholderUser!@#",
-        role
+        role,
+        phone
       });
     } else {
-      // If user exists but is finalizing a role update
+      // If user exists but is finalizing a role/phone update
+      let updated = false;
       if (role && user.role !== role) {
          user.role = role;
+         updated = true;
+      }
+      if (phone && user.phone !== phone) {
+         user.phone = phone;
+         updated = true;
+      }
+      if (updated) {
          await user.save();
       }
     }

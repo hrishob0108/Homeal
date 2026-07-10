@@ -16,7 +16,7 @@ const getMeals = async (req, res) => {
 // @route   POST /api/meals
 // @access  Private (Dayscholars)
 const createMeal = async (req, res) => {
-  const { title, description, price, image, tag } = req.body;
+  const { title, description, price, image, tag, isVeg } = req.body;
 
   try {
     if(req.user.role !== "dayscholar") {
@@ -29,11 +29,15 @@ const createMeal = async (req, res) => {
       price,
       image,
       tag,
+      isVeg: isVeg !== undefined ? isVeg : true,
       cookName: req.user.name,
       createdBy: req.user._id,
     });
 
     const savedMeal = await newMeal.save();
+    if (req.io) {
+      req.io.emit('new_meal_posted', savedMeal);
+    }
     res.status(201).json(savedMeal);
   } catch (err) {
     res.status(500).json({ message: "Error creating meal", error: err.message });
@@ -54,6 +58,9 @@ const updateMeal = async (req, res) => {
     }
 
     meal = await Meal.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true });
+    if (req.io) {
+      req.io.emit('meal_updated', meal);
+    }
     res.status(200).json(meal);
   } catch (err) {
     res.status(500).json({ message: "Error updating meal", error: err.message });
@@ -73,6 +80,9 @@ const deleteMeal = async (req, res) => {
     }
 
     await Meal.findByIdAndDelete(req.params.id);
+    if (req.io) {
+      req.io.emit('meal_deleted', { id: req.params.id });
+    }
     res.status(200).json({ message: "Meal removed" });
   } catch (err) {
     res.status(500).json({ message: "Error deleting meal", error: err.message });
