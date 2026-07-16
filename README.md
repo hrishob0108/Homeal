@@ -1,113 +1,114 @@
-Foodler - Home-Cooked Food Sharing Platform
+# Cravyo — Premium Campus Peer-to-Peer Food Sharing Platform
 
-Project Idea
+Cravyo is a web-based, peer-to-peer campus food-sharing platform designed to connect **Hostelers** craving authentic, home-cooked food with **Dayscholars** who bring fresh meals from home. The platform resolves the monotony of daily mess meals by providing a warm, community-driven taste network right at college campuses.
 
-Foodler is a web-based platform designed to connect hostelers craving home-cooked food with dayscholars who can bring it from home. The platform enables hostelers to request home-cooked meals,  while dayscholars can accept these requests and deliver food. The system ensures trust and authenticity with a verification and rating system.
+---
 
-Brief Description
+## 🍱 Project Overview & Workflow
 
-Users: Hostelers (who request food) & Dayscholars (who bring food)
+Cravyo divides campus food-sharing into two streamlined, intuitive dashboards:
 
-Core Features:
+1. **Hostelers (Buyers)**:
+   - Browse the real-time campus feed of fresh, home-cooked dishes.
+   - Submit custom food requests specifying description, target budget, delivery location, and needed-by time.
+   - Monitor multiple active orders concurrently via vertical progress trackers.
+   - Rate providers and leave community reviews after successful delivery.
 
-Secure user authentication
+2. **Dayscholars (Sellers)**:
+   - Publish home-cooked dishes onto the campus feed with Veg/Non-Veg classifications, pricing, and custom tags.
+   - View, accept, or decline live custom requests posted by hostelers.
+   - Manage order cooking states (Preparing, Out for Delivery, Delivered) and upload delivery photo proofs.
+   - Track monthly earnings, overall ratings, and review feedback.
 
-Food request system
+---
 
-Real-time notifications
+## ✨ Key Features
 
-Contact sharing control
+- **Dual Dashboard Layouts**: Toggle roles in a single click with tailored states—brick-red styling for Hostelers and warm-gold styling for Dayscholars.
+- **WebSocket Live Sync**: Experience zero page reloads. Sockets dynamically propagate new dish listings, order state progress, custom hosteler requests, and system-wide alerts.
+- **Concurrent Order Tracking**: Hostelers can track all of their active cravings simultaneously in real-time.
+- **Aesthetic Premium Design**: Features sleek glassmorphic components, warm backgrounds, customized scrollbars, floating organic leaf/flower animations, and glowing Veg/Non-Veg indicators.
+- **Secure Phone Validation**: Enforces standard 10-digit phone registration to enable safe, prompt courier contact on delivery.
+- **Delivery Proof Uploads**: Integrates Cloudinary to let day-scholars upload photo proofs before finalizing delivery.
 
-Payment integration
+---
 
-Reviews and ratings
+## 🛠️ Technology Stack
 
-Optional proof of home-cooked food
+- **Frontend**:
+  - React.js (Vite)
+  - Tailwind CSS v4 Theme variables
+  - Framer Motion (Transitions and background float particles)
+  - React Icons
+  - Socket.io-client
 
-Technology Stack:
+- **Backend**:
+  - Node.js & Express.js
+  - MongoDB & Mongoose schemas
+  - Socket.io engine
+  - Firebase Admin SDK authentication
 
-Frontend: React.js, Tailwind CSS
+---
 
-Backend: Node.js, Express.js
+## 📁 Repository Structure
 
-Database: MongoDB
+```
+├── backend/                  # Node/Express API Server
+│   ├── config/               # Database and Auth configs
+│   ├── controllers/          # Business logic handlers (auth, meals, orders)
+│   ├── models/               # MongoDB models (User, Meal, Order)
+│   ├── routes/               # Express routing end-points
+│   └── server.js             # Server initialization & socket server
+│
+└── frontend/                 # React client application
+    ├── src/
+    │   ├── components/       # Shared modals and layout items
+    │   ├── context/          # Context hooks (Sockets, etc.)
+    │   ├── pages/            # Application routes (Home, Login, Register, Dashboards)
+    │   ├── services/         # Axios API connection
+    │   ├── index.css         # Tailwind directives and utility classes
+    │   └── main.jsx          # Entry point
+```
 
-Authentication: Firebase/Auth0
+---
 
-Real-time Notifications: WebSockets
+## 🚀 Setup & Installation
 
-Payment Gateway: Razorpay/Stripe
+### Prerequisites
+- Node.js installed
+- MongoDB instance running
+- Firebase project configured
 
-Day-by-Day Plan:-
+### 1. Backend Setup
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Configure your environmental variables in a `.env` file (e.g., `PORT`, `MONGO_URI`, Cloudinary settings).
+4. Start the backend server:
+   ```bash
+   npm start
+   ```
 
-Week 1: Planning & Research.
+### 2. Frontend Setup
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the Vite development server:
+   ```bash
+   npm run dev
+   ```
 
-Day 1: Define project scope, problem statement, and objectives.
+---
 
-Day 2: Research existing solutions and competitors.
-
-Day 3: Finalize technology stack and architecture.
-
-Day 4: Sketch UI/UX wireframes (Figma).
-
-Day 5: Collect feedback and finalize design.
-
-Day 6: Set up GitHub repository and project documentation.
-
-Day 7: Review and refine plan.
-
-Week 2: Backend Development.
-
-Day 8: Set up backend with Node.js and Express.js.
-
-Day 9: Create database schema and models (MongoDB).
-
-Day 10: Implement user authentication (Firebase/Auth0).
-
-Day 11: Develop food request & acceptance APIs.
-
-Day 12: Implement notification system (WebSockets).
-
-Day 13: Integrate payment gateway.
-
-Day 14: Test backend endpoints.
-
-Week 3: Frontend Development.
-
-Day 15: Set up React.js project structure.
-
-Day 16: Implement authentication UI.
-
-Day 17: Develop food request submission page.
-
-Day 18: Implement real-time request notifications.
-
-Day 19: Create dashboard for hostelers & dayscholars.
-
-Day 20: Integrate backend APIs with frontend.
-
-Day 21: Testing and debugging UI components.
-
-Week 4: Testing & Deployment.
-
-Day 22: Conduct end-to-end testing.
-
-Day 23: Gather user feedback & make improvements.
-
-Day 24: Deploy the platform (Vercel/Netlify for frontend, Heroku for backend).
-
-Day 25: Set up domain and hosting.
-
-Day 26: Final review and presentation preparation.
-
-Day 27: Create user guide and documentation.
-
-Day 28: Final submission and capstone presentation.
-
-Conclusion
-
-Foodler aims to provide a structured and trustworthy way for hostelers to enjoy home-cooked meals while allowing dayscholars to share their home food. With an intuitive design, seamless user experience, and reliable verification measures, Foodler creates a strong community-driven solution to this everyday problem.
-
-
-
-Render Link = https://s82-hrishob-capstone-foodler-6.onrender.com
+## 🔗 Live Deployment
+- **Platform link**: [Render Link](https://homeal.onrender.com)
