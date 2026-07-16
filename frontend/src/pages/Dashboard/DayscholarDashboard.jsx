@@ -24,7 +24,8 @@ const DayscholarDashboard = () => {
   const navigate = useNavigate();
   const socket = useSocket();
   const wid = useRef();
-  const [url, setUrl] = useState("");
+  const [localUploads, setLocalUploads] = useState({});
+  const activeOrderIdRef = useRef(null);
   const [requests, setRequests] = useState([]);
   const [myMenu, setMyMenu] = useState([]);
   const [customRequests, setCustomRequests] = useState([]);
@@ -55,8 +56,14 @@ const DayscholarDashboard = () => {
       { cloudName: "dfseckyjx", uploadPreset: "qbvu3y5j" },
       (error, result) => {
         if (!error && result && result.event === "success") {
-          setUrl(result.info.secure_url);
-          toast.success("Delivery Proof Uploaded!");
+          const targetId = activeOrderIdRef.current;
+          if (targetId) {
+            setLocalUploads(prev => ({
+              ...prev,
+              [targetId]: result.info.secure_url
+            }));
+            toast.success("Delivery Proof Uploaded!");
+          }
         }
       }
     );
@@ -161,14 +168,21 @@ const DayscholarDashboard = () => {
   const handleUpdateStatus = async (orderId, newStatus) => {
     try {
       const payload = { status: newStatus };
-      if(newStatus === 'Delivered' && url) payload.proofImageUrl = url;
+      const localUrl = localUploads[orderId];
+      if(newStatus === 'Delivered' && localUrl) payload.proofImageUrl = localUrl;
 
       const res = await api.put(`/orders/${orderId}/status`, payload);
 
       if(res.status === 200) {
         toast.success(`Order marked as ${newStatus}`);
         fetchDashboardData(); // refresh list
-        if(newStatus === 'Delivered') setUrl(""); // reset image
+        if(newStatus === 'Delivered') {
+          setLocalUploads(prev => {
+            const copy = { ...prev };
+            delete copy[orderId];
+            return copy;
+          });
+        }
       } else {
         toast.error("Failed to update order");
       }
@@ -179,12 +193,21 @@ const DayscholarDashboard = () => {
 
   const handleUploadProof = async (orderId) => {
     try {
-      const payload = { proofImageUrl: url };
+      const localUrl = localUploads[orderId];
+      if (!localUrl) {
+        toast.error("No proof image uploaded yet.");
+        return;
+      }
+      const payload = { proofImageUrl: localUrl };
       const res = await api.put(`/orders/${orderId}/status`, payload);
 
       if(res.status === 200) {
         toast.success("Proof submitted to Hosteler!");
-        setUrl(""); // Clear local state since it's now in DB
+        setLocalUploads(prev => {
+          const copy = { ...prev };
+          delete copy[orderId];
+          return copy;
+        });
         fetchDashboardData();
       } else {
         toast.error("Failed to submit proof");
@@ -416,14 +439,17 @@ const ActiveDeliveries = ({ deliveries, wid, url, onUpdateStatus, onUploadProof 
                   <motion.button
                     whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                     className="bg-white border border-gray-200 hover:border-indigo-300 text-indigo-600 font-bold px-6 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-2 group w-full sm:w-auto overflow-hidden whitespace-nowrap cursor-pointer"
-                    onClick={() => wid.current.open()}
+                    onClick={() => {
+                      activeOrderIdRef.current = delivery._id;
+                      wid.current.open();
+                    }}
                   >
                     <FiZap className="text-indigo-400 group-hover:text-amber-400 transition-colors" /> 1. Upload Delivery Proof
                   </motion.button>
                   <AnimatePresence>
-                    {url && (
+                    {localUploads[delivery._id] && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="overflow-hidden rounded-xl border-2 border-green-200 shadow-lg relative mt-3 w-full sm:w-64 max-w-full">
-                        <img src={url} alt="Proof" className="w-full h-40 object-cover" />
+                        <img src={localUploads[delivery._id]} alt="Proof" className="w-full h-40 object-cover" />
                         <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-md">Uploaded Locally</div>
                         <button onClick={() => onUploadProof(delivery._id)} className="w-full bg-green-500 hover:bg-green-600 text-white font-black py-3 shadow-md cursor-pointer">
                            2. Submit Photo to Hosteler
