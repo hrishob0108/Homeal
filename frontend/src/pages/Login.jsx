@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaUtensils, FaArrowLeft, FaCheckCircle, FaStar, FaQuoteLeft } from "react-icons/fa";
-import { FiMail, FiLock, FiChevronRight } from "react-icons/fi";
+import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowLeft } from "react-icons/fi";
 import GOO from "../firebase";
 import api from "../services/api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
 
@@ -37,7 +37,7 @@ const Login = () => {
         }
       } catch (error) {
         console.error("Login Error:", error);
-        setErrors({ api: "Something went wrong. Please try again." });
+        setErrors({ api: error.response?.data?.message || "Something went wrong. Please try again." });
       }
     }
   };
@@ -52,236 +52,197 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen relative w-full flex bg-cream font-sans overflow-hidden text-espresso select-none">
+    <div className="h-screen w-full relative flex items-center justify-center lg:justify-end bg-[#9B4549] font-sans text-white p-4 sm:p-6 lg:p-10 overflow-hidden select-none">
       
-      {/* Floating Decorative Elements */}
-      <span className="absolute top-10 left-10 text-primary/10 text-4xl select-none animate-spin-slow z-0">✿</span>
-      <span className="absolute bottom-10 right-10 text-secondary/20 text-3xl select-none animate-bounce-slow z-0">🍃</span>
-      <span className="absolute top-1/3 right-1/3 text-primary/10 text-2xl select-none z-0">✿</span>
+      {/* Background Graphic - Food Thali on Left */}
+      <div className="absolute inset-0 w-full h-full z-0 flex items-center justify-start overflow-hidden pointer-events-none">
+        <div className="w-full lg:w-[65%] h-full relative p-4 lg:p-8">
+          <img
+            src="/login.png"
+            alt="Indian Thali background"
+            className="w-full h-full object-contain object-left lg:scale-[1.6] origin-left translate-y-8 -translate-x-40"
+          />
+          {/* Gradient to seamlessly blend the image's right edge into the solid background */}
+          <div className="hidden lg:block absolute inset-y-0 right-0 w-48 bg-gradient-to-r from-transparent to-[#9B4549]"></div>
+        </div>
+      </div>
 
-      {/* Floating Back to Home Button */}
-      <Link to="/" className="absolute top-6 left-6 lg:left-8 z-50">
+      {/* Floating Home Button */}
+      <Link to="/" className="absolute top-6 left-6 lg:left-8 z-20">
         <motion.button
           whileHover={{ scale: 1.05, x: -3 }}
           whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 bg-white/90 backdrop-blur-md px-5 py-2.5 rounded-full font-bold text-espresso shadow-md border border-gray-100/50 hover:text-primary transition-all cursor-pointer"
+          className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2 rounded-full font-bold text-white shadow-lg border border-white/30 hover:bg-white/25 transition-all cursor-pointer text-xs"
         >
-          <FaArrowLeft className="text-xs" /> Home
+          <FiArrowLeft className="text-xs" /> Home
         </motion.button>
       </Link>
 
-      {/* LEFT PANEL - VISUAL DISPLAY (Hidden on Mobile) */}
-      <div className="hidden lg:flex flex-col justify-between w-1/2 bg-gradient-to-br from-espresso to-[#4E2424] relative overflow-hidden p-16 xl:p-20">
-        {/* Background Blobs */}
-        <motion.div
-          animate={{ scale: [1, 1.15, 1], x: [0, 40, 0], y: [0, -30, 0] }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-0 right-0 w-[45vw] h-[45vw] bg-primary/15 rounded-full blur-[100px] pointer-events-none"
-        />
-        <motion.div
-          animate={{ scale: [1, 1.25, 1], x: [0, -20, 0], y: [0, 50, 0] }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-0 left-0 w-[35vw] h-[35vw] bg-secondary/10 rounded-full blur-[90px] pointer-events-none"
-        />
-
-        {/* Brand Logo */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="bg-white/90 p-3 rounded-2xl shadow-lg border border-white/20">
-            <FaUtensils className="text-primary text-2xl" />
-          </div>
-          <span className="text-3xl font-serif font-black text-white tracking-tight">Cravyo</span>
+      {/* Glassmorphic Form Card Container */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.5, type: "spring", bounce: 0.2 }}
+className="relative z-10 w-full max-w-[480px] min-h-[550px] lg:mr-8 xl:mr-16 bg-white/10 backdrop-blur-xl border border-white/35 rounded-[32px] p-8 sm:p-10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] my-4 -translate-x-30"
+      >
+        {/* Card Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-white mb-1.5">
+            Welcome Back
+          </h1>
+          <p className="text-[#E7B5B8] font-sans font-medium text-xs sm:text-sm">
+            Enter your credentials to access your account
+          </p>
         </div>
 
-        {/* Centerpiece Visuals */}
-        <div className="relative z-10 w-full max-w-lg mt-auto mb-10 flex flex-col gap-8">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, type: "spring" }}
-            className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden"
-          >
-            {/* Thali visual shape decoration */}
-            <div className="absolute -top-16 -right-16 w-32 h-32 bg-primary/20 rounded-full blur-2xl z-0" />
-            
-            <div className="flex gap-1 mb-6 relative z-10">
-              {[...Array(5)].map((_, i) => <FaStar key={i} className="text-secondary text-xl" />)}
-            </div>
-
-            <h2 className="text-4xl xl:text-5xl font-serif font-black text-white mb-6 leading-[1.15] relative z-10">
-              Taste Comfort. <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary font-extrabold pb-1 inline-block">
-                Share Community.
-              </span>
-            </h2>
-
-            <p className="text-gray-200 text-base xl:text-lg font-medium leading-relaxed opacity-95 relative z-10 mb-8">
-              Join thousands of hostelers and dayscholars already connecting over authentic, homemade meals on campus.
-            </p>
-
-            {/* Testimonial Quote */}
-            <div className="border-t border-white/10 pt-6 flex items-start gap-4">
-              <FaQuoteLeft className="text-secondary/50 text-2xl shrink-0 mt-1" />
-              <div>
-                <p className="text-sm italic font-medium text-white/95 leading-relaxed">
-                  "Ghar ka khana on campus is no longer a dream! The interface is so simple and deliveries are always right on time."
-                </p>
-                <p className="text-xs font-black text-secondary uppercase tracking-widest mt-2">
-                  — Ritesh Kumar, Hosteler
-                </p>
+        {/* API Error Alert */}
+        <AnimatePresence>
+          {errors.api && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-4 overflow-hidden"
+            >
+              <div className="bg-red-500/20 backdrop-blur-md text-red-100 px-4 py-2 rounded-xl border border-red-400/40 text-xs font-bold text-center">
+                {errors.api}
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* Email Field */}
+          <div>
+            <label className="block text-white font-serif text-sm font-normal mb-1.5 text-left">
+              Email
+            </label>
+            <div className="relative flex items-center">
+              <FiMail className="absolute left-3.5 text-white/70 text-sm pointer-events-none" />
+              <input
+                type="email"
+                name="email"
+                placeholder="Enter Your Email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errors.email) setErrors({ ...errors, email: null });
+                }}
+                className={`w-full pl-10 pr-4 py-2.5 bg-white/10 backdrop-blur-md text-white placeholder-white/60 rounded-[14px] border ${
+                  errors.email ? "border-red-300" : "border-white/35 focus:border-white"
+                } focus:outline-none focus:ring-1 focus:ring-white/50 transition-all text-sm font-medium`}
+              />
             </div>
-          </motion.div>
-
-          <div className="flex items-center gap-4 bg-black/15 px-6 py-4 rounded-3xl border border-white/5 w-max shadow-inner">
-            <FaCheckCircle className="text-primary text-xl animate-pulse" />
-            <p className="text-white font-bold text-sm tracking-wide">Verified College Network</p>
-          </div>
-        </div>
-      </div>
-
-      {/* RIGHT PANEL - FORM ENTRY (Centered on Mobile) */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 lg:p-24 relative xl:px-32 z-10">
-        
-        {/* Mobile background blob */}
-        <div className="lg:hidden absolute top-[-10%] right-[-10%] w-64 h-64 bg-primary/10 rounded-full blur-[80px]" />
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="w-full max-w-md bg-white/80 lg:bg-transparent backdrop-blur-2xl lg:backdrop-blur-none p-8 sm:p-12 lg:p-0 rounded-[2.5rem] shadow-[0_20px_50px_rgba(60,34,34,0.03)] lg:shadow-none border border-white/60 lg:border-none relative"
-        >
-          {/* Header */}
-          <motion.div variants={itemVariants} className="mb-10 text-center lg:text-left">
-            <span className="inline-block bg-primary/10 text-primary px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider mb-4 border border-primary/20">
-              Welcome back
-            </span>
-            <h2 className="text-4xl sm:text-5xl font-serif font-black tracking-tight text-espresso leading-tight">
-              Sign In 👋
-            </h2>
-            <p className="text-espresso-light font-medium text-base mt-2">Access your Cravyo dashboard</p>
-          </motion.div>
-
-          {/* Error Banner */}
-          <AnimatePresence>
-            {errors.api && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mb-6 overflow-hidden"
-              >
-                <div className="bg-red-50 text-red-600 px-4 py-3 rounded-2xl border border-red-100 text-sm font-bold flex items-center shadow-sm">
-                  {errors.api}
-                </div>
-              </motion.div>
+            {errors.email && (
+              <p className="text-red-200 text-xs font-medium mt-1 ml-1 text-left">{errors.email}</p>
             )}
-          </AnimatePresence>
+          </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            
-            {/* Email Address */}
-            <motion.div variants={itemVariants} className="relative group">
-              <label className="block text-espresso mb-2 text-sm font-bold ml-1">Email Address</label>
-              <div className="relative flex items-center">
-                <FiMail className="absolute left-4.5 text-gray-400 group-focus-within:text-primary transition-colors text-xl" />
-                <input
-                  type="email"
-                  placeholder="name@college.edu"
-                  className={`w-full pl-13 pr-4 py-4 bg-white text-espresso rounded-2xl border ${
-                    errors.email ? 'border-red-400 focus:ring-red-400' : 'border-primary/25 focus:border-primary focus:ring-primary/10'
-                  } focus:outline-none focus:ring-4 transition-all duration-300 font-medium shadow-sm hover:border-primary/45 text-base`}
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (errors.email) setErrors({ ...errors, email: null });
-                  }}
-                />
-              </div>
-              {errors.email && <p className="text-red-500 text-xs font-bold mt-2 ml-1">{errors.email}</p>}
-            </motion.div>
-
-            {/* Password */}
-            <motion.div variants={itemVariants} className="relative group">
-              <label className="block text-espresso mb-2 text-sm font-bold ml-1">Password</label>
-              <div className="relative flex items-center">
-                <FiLock className="absolute left-4.5 text-gray-400 group-focus-within:text-primary transition-colors text-xl" />
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  className={`w-full pl-13 pr-4 py-4 bg-white text-espresso rounded-2xl border ${
-                    errors.password ? 'border-red-400 focus:ring-red-400' : 'border-primary/25 focus:border-primary focus:ring-primary/10'
-                  } focus:outline-none focus:ring-4 transition-all duration-300 font-medium shadow-sm hover:border-primary/45 text-base`}
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (errors.password) setErrors({ ...errors, password: null });
-                  }}
-                />
-              </div>
-              {errors.password && <p className="text-red-500 text-xs font-bold mt-2 ml-1">{errors.password}</p>}
-            </motion.div>
-
-            {/* Options */}
-            <motion.div variants={itemVariants} className="flex justify-between text-sm items-center font-bold px-1 pt-1">
-              <label className="flex items-center cursor-pointer group">
-                <input 
-                  type="checkbox" 
-                  className="mr-3 w-4.5 h-4.5 rounded-lg border-primary/30 text-primary focus:ring-primary focus:ring-offset-1 transition-colors cursor-pointer" 
-                />
-                <span className="text-espresso-light group-hover:text-espresso transition-colors">Remember me</span>
-              </label>
-              <Link to="/forgot-password" className="text-primary hover:text-primary-hover transition-colors cursor-pointer">
-                Forgot Password?
-              </Link>
-            </motion.div>
-
-            {/* Sign In Button */}
-            <motion.div variants={itemVariants} className="pt-4">
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                className="w-full bg-primary hover:bg-primary-hover py-4.5 rounded-2xl text-white font-black text-lg shadow-[0_12px_24px_rgba(168,68,68,0.15)] hover:shadow-[0_12px_24px_rgba(168,68,68,0.3)] transition-all duration-300 cursor-pointer flex items-center justify-center gap-2"
+          {/* Password Field */}
+          <div>
+            <label className="block text-white font-serif text-sm font-normal mb-1.5 text-left">
+              Password
+            </label>
+            <div className="relative flex items-center">
+              <FiLock className="absolute left-3.5 text-white/70 text-sm pointer-events-none" />
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                placeholder="Enter Your Password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errors.password) setErrors({ ...errors, password: null });
+                }}
+                className={`w-full pl-10 pr-10 py-2.5 bg-white/10 backdrop-blur-md text-white placeholder-white/60 rounded-[14px] border ${
+                  errors.password ? "border-red-300" : "border-white/35 focus:border-white"
+                } focus:outline-none focus:ring-1 focus:ring-white/50 transition-all text-sm font-medium`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 text-white/70 hover:text-white transition-colors cursor-pointer"
               >
-                Sign In
-                <FiChevronRight className="text-xl" />
-              </motion.button>
-            </motion.div>
-          </form>
+                {showPassword ? <FiEyeOff className="text-sm" /> : <FiEye className="text-sm" />}
+              </button>
+            </div>
+            {errors.password && (
+              <p className="text-red-200 text-xs font-medium mt-1 ml-1 text-left">{errors.password}</p>
+            )}
+          </div>
 
-          {/* Splitter */}
-          <motion.div variants={itemVariants} className="flex items-center my-8">
-            <div className="flex-1 h-px bg-primary/10"></div>
-            <span className="px-5 text-espresso/35 text-xs font-black uppercase tracking-widest">Or</span>
-            <div className="flex-1 h-px bg-primary/10"></div>
-          </motion.div>
-
-          {/* Google Button */}
-          <motion.div variants={itemVariants}>
-            <motion.div 
-              whileHover={{ scale: 1.02 }} 
-              whileTap={{ scale: 0.98 }} 
-              className="w-full flex justify-center bg-white border border-primary/20 hover:border-primary/40 rounded-2xl shadow-sm hover:shadow-md transition-all py-1 cursor-pointer"
-            >
-              <GOO />
-            </motion.div>
-          </motion.div>
-
-          {/* Account redirect */}
-          <motion.p variants={itemVariants} className="mt-12 text-center text-espresso-light font-medium text-base">
-            Don't have an account?{" "}
-            <Link 
-              to="/register" 
-              className="text-primary hover:text-primary-hover font-black ml-1 relative after:content-[''] after:absolute after:-bottom-0.5 after:left-0 after:w-full after:h-0.5 after:bg-primary after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:origin-left cursor-pointer"
-            >
-              Create one now
+          {/* Remember me & Forgot Password */}
+          <div className="flex justify-between items-center text-xs font-medium px-1 py-1.5">
+            <label className="flex items-center cursor-pointer group">
+              <input 
+                type="checkbox" 
+                className="mr-2 w-3.5 h-3.5 rounded-sm border-white/30 text-[#4F2023] focus:ring-white/50 transition-colors cursor-pointer bg-white/10" 
+              />
+              <span className="text-white/85 group-hover:text-white transition-colors">Remember me</span>
+            </label>
+            <Link to="/forgot-password" className="text-[#3F1A1C] hover:text-white font-medium transition-colors cursor-pointer">
+              Forgot password?
             </Link>
-          </motion.p>
-        </motion.div>
-      </div>
+          </div>
 
+          {/* Submit Action Button */}
+          <div className="pt-2">
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              type="submit"
+              className="w-full bg-[#4F2023] hover:bg-[#3F1A1C] text-white font-bold py-3 rounded-[14px] shadow-md transition-all duration-300 cursor-pointer text-sm"
+            >
+              Log In
+            </motion.button>
+          </div>
+        </form>
+
+        {/* Or Continue With Divider */}
+        <div className="flex items-center my-4">
+          <div className="flex-1 border-t border-white/30"></div>
+          <span className="px-3 text-xs text-white/75 font-medium">Or Continue With</span>
+          <div className="flex-1 border-t border-white/30"></div>
+        </div>
+
+        {/* Google Sign-In Button */}
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
+          type="button"
+          className="w-full bg-[#FFF5EA] hover:bg-white text-gray-800 font-bold py-2.5 rounded-[14px] flex items-center justify-center gap-2.5 shadow-sm transition-all duration-300 cursor-pointer text-sm"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24">
+            <path
+              fill="#4285F4"
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+            />
+          </svg>
+          Google
+        </motion.button>
+
+        {/* Signup Redirect */}
+        <p className="text-center text-xs text-white/75 font-medium mt-4">
+          Don't have an account?{" "}
+          <Link to="/register" className="font-bold text-[#3F1A1C] hover:text-[#2a1112] ml-0.5 transition-colors">
+            Sign Up
+          </Link>
+        </p>
+
+      </motion.div>
     </div>
   );
 };
