@@ -251,7 +251,7 @@ const DayscholarDashboard = () => {
             <div className="lg:col-span-2 space-y-8">
               <NewFoodRequests requests={newRequests} onUpdateStatus={handleUpdateStatus} />
               <CustomFoodRequestsFeed requests={customRequests} onAccept={handleAcceptRequest} />
-              <ActiveDeliveries deliveries={activeDeliveries} wid={wid} url={url} onUpdateStatus={handleUpdateStatus} onUploadProof={handleUploadProof} />
+              <ActiveDeliveries deliveries={activeDeliveries} wid={wid} localUploads={localUploads} onUpdateStatus={handleUpdateStatus} onUploadProof={handleUploadProof} />
             </div>
             <div className="space-y-8">
               <QuickActions />
@@ -411,7 +411,7 @@ const NewFoodRequests = ({ requests, onUpdateStatus }) => (
   </motion.div>
 );
 
-const ActiveDeliveries = ({ deliveries, wid, url, onUpdateStatus, onUploadProof }) => (
+const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUploadProof }) => (
   <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgba(60,34,34,0.04)] border border-white/50">
     <h3 className="text-2xl font-serif font-black text-espresso flex items-center gap-3 mb-6">
       <div className="p-2 bg-secondary/10 rounded-lg text-secondary"><FiTruck /></div> Active Deliveries
