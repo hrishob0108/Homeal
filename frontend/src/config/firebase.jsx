@@ -3,12 +3,13 @@ import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyACU6qzo6IheSDPQBKzYLzqNo0jF3rPJmI",
-  authDomain: "foodler-6e549.firebaseapp.com",
-  projectId: "foodler-6e549",
-  storageBucket: "foodler-6e549.firebasestorage.app",
-  messagingSenderId: "897932079039",
-  appId: "1:897932079039:web:9d76b1458a89a893d5fb0a",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
