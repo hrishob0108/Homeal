@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiUser, FiShoppingCart, FiSearch, FiClock, FiPackage, FiStar, FiLogOut, FiTrendingUp, FiMapPin, FiArrowRight, FiX, FiBell } from 'react-icons/fi';
+import { FiHome, FiUser, FiShoppingCart, FiSearch, FiClock, FiPackage, FiStar, FiLogOut, FiTrendingUp, FiMapPin, FiArrowRight, FiX, FiBell, FiChevronRight } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -196,23 +196,33 @@ const HostelerDashboard = () => {
       <div className="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-primary/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
       <div className="fixed bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-secondary/15 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
-      <Header user={user} navigate={navigate} notifications={notifications} setNotifications={setNotifications} isNotifOpen={isNotifOpen} setIsNotifOpen={setIsNotifOpen} />
+      <Header 
+        user={user} 
+        navigate={navigate} 
+        notifications={notifications} 
+        setNotifications={setNotifications} 
+        isNotifOpen={isNotifOpen} 
+        setIsNotifOpen={setIsNotifOpen} 
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+      />
 
-      <main className="relative z-10 pt-28 px-4 sm:px-6 lg:px-12 max-w-7xl mx-auto">
+      <main className="relative z-10 pt-[140px] px-4 sm:px-6 lg:px-12 max-w-[1440px] mx-auto">
         <motion.div variants={containerVariants} initial="hidden" animate="visible">
           <WelcomeBanner user={user} onRequestCustom={() => setIsRequestModalOpen(true)} />
           
-          <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="mt-[80px]">
+            <AvailableToday 
+              meals={filteredMeals} 
+              cookStats={cookStats} 
+              onOrder={handleOrderMeal} 
+              selectedTag={selectedTag}
+              setSelectedTag={setSelectedTag}
+            />
+          </div>
+          
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              <AvailableToday 
-                meals={filteredMeals} 
-                cookStats={cookStats} 
-                onOrder={handleOrderMeal} 
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                selectedTag={selectedTag}
-                setSelectedTag={setSelectedTag}
-              />
               <OrderHistory orders={pastOrders} myReviews={myReviews} onRateOrder={setSelectedOrderForReview} />
             </div>
             <div className="space-y-8">
@@ -246,7 +256,7 @@ const HostelerDashboard = () => {
 };
 
 // Sub-components
-const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, setIsNotifOpen }) => {
+const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, setIsNotifOpen, searchQuery, setSearchQuery }) => {
   const handleLogout = () => {
     sessionStorage.removeItem('currentUser');
     toast.success("Successfully logged out");
@@ -254,24 +264,58 @@ const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, 
   };
 
   return (
-    <motion.header initial={{ y: -100 }} animate={{ y: 0 }} transition={{ type: "spring", stiffness: 100, damping: 20 }} className="fixed top-0 w-full z-50 px-4 sm:px-6 lg:px-12 py-4">
-      <div className="max-w-7xl mx-auto bg-white/80 backdrop-blur-xl border border-primary/10 shadow-sm rounded-2xl flex justify-between items-center px-6 py-3">
-        <Link to="/" className="text-2xl font-serif font-black text-espresso tracking-tight flex items-center gap-2">
-          🍱 Cravyo <span className="hidden sm:inline-block text-espresso/45 font-medium text-lg ml-2 border-l border-primary/20 pl-4">Hosteler Hub</span>
-        </Link>
-        <div className="flex items-center space-x-4 sm:space-x-6">
+    <div className="fixed top-6 left-0 right-0 z-50 flex justify-center w-full px-6 md:px-12 pointer-events-none">
+      <motion.header 
+        initial={{ y: -100 }} 
+        animate={{ y: 0 }} 
+        transition={{ type: "spring", stiffness: 100, damping: 20 }} 
+        className="w-full max-w-7xl h-[90px] bg-[#FFF8F2]/80 backdrop-blur-md border border-[#E8D9CF] rounded-[25px] shadow-md flex items-center px-12 pointer-events-auto"
+      >
+        <div className="flex w-full justify-between items-center h-full relative">
           
-          {/* Notification Bell Dropdown */}
+          {/* Left: Logo */}
+          <Link to="/" className="text-[32px] font-serif font-bold text-[#8C3F3F] tracking-tight shrink-0">
+            Cravyo
+          </Link>
+
+          {/* Middle: Search Bar (Exactly Centered) */}
+          <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[500px]">
+            <div className="relative w-full flex items-center bg-white border border-[#E8D9CF] rounded-[999px] px-6 py-3 shadow-sm hover:border-[#C96D6D] transition-colors focus-within:border-[#8C3F3F] focus-within:ring-2 focus-within:ring-[#C96D6D]/20">
+              <FiSearch className="text-[#4D2B2B]/40 mr-3 w-[18px] h-[18px] stroke-[2]" />
+              <input 
+                type="text" 
+                placeholder="Search Meals, Dishes Or Cuisines..." 
+                value={searchQuery} 
+                onChange={e => setSearchQuery?.(e.target.value)} 
+                className="w-full text-[15px] font-medium bg-transparent focus:outline-none text-[#4D2B2B] placeholder:text-[#4D2B2B]/40 font-sans" 
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")} className="text-[#4D2B2B]/50 hover:text-[#8C3F3F] transition-colors ml-2 cursor-pointer">
+                  <FiX className="w-[18px] h-[18px] stroke-[2.5]" />
+                </button>
+              )}
+            </div>
+          </div>
+        {/* Right: Actions */}
+        <div className="flex items-center space-x-6 shrink-0 z-10">
+          
+          {/* Hosteler Badge */}
+          <div className="hidden md:flex items-center gap-2.5 px-6 py-2.5 rounded-[999px] border border-[#E8D9CF] bg-white text-[#8C3F3F] hover:bg-[#FFF8F2] transition-colors shadow-sm cursor-pointer">
+             <FiHome className="w-4 h-4 stroke-[2]" />
+             <span className="text-[14px] font-semibold">Hosteler</span>
+          </div>
+
+          {/* Notification Bell */}
           <div className="relative">
             <motion.button 
               whileHover={{ scale: 1.05 }} 
               whileTap={{ scale: 0.95 }}
               onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 hover:text-primary relative flex items-center justify-center border border-gray-100 cursor-pointer"
+              className="text-[#4D2B2B]/70 hover:text-[#8C3F3F] relative flex items-center justify-center cursor-pointer transition-colors p-2"
             >
-              <FiBell className="w-5 h-5"/>
+              <FiBell className="w-6 h-6 stroke-[1.5]"/>
               {notifications && notifications.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full border border-white animate-pulse"></span>
+                <span className="absolute top-1.5 right-2 w-2.5 h-2.5 bg-[#8C3F3F] rounded-full border-[2px] border-white animate-pulse"></span>
               )}
             </motion.button>
             
@@ -281,7 +325,7 @@ const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, 
                   initial={{ opacity: 0, y: 15, scale: 0.95 }} 
                   animate={{ opacity: 1, y: 0, scale: 1 }} 
                   exit={{ opacity: 0, y: 15, scale: 0.95 }} 
-                  className="absolute right-0 mt-3 w-80 bg-white/95 backdrop-blur-xl border border-primary/10 shadow-2xl rounded-2xl p-4 z-50 overflow-hidden"
+                  className="absolute right-0 mt-4 w-80 bg-white/95 backdrop-blur-xl border border-primary/10 shadow-2xl rounded-2xl p-4 z-50 overflow-hidden"
                 >
                   <div className="flex justify-between items-center pb-2 border-b border-primary/10 mb-2">
                     <span className="font-black text-sm text-espresso">Notifications</span>
@@ -305,45 +349,76 @@ const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, 
             </AnimatePresence>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-hover flex items-center justify-center text-white font-black text-lg shadow-md uppercase">
+          {/* User Avatar */}
+          <div className="relative group cursor-pointer" onClick={handleLogout} title="Click to Logout">
+            <div className="w-[44px] h-[44px] rounded-full bg-[#FFF5EF] flex items-center justify-center text-[#8C3F3F] font-bold text-lg shadow-sm border border-[#E8D9CF] uppercase overflow-hidden hover:scale-105 transition-transform duration-300">
               {user?.name?.[0] || 'H'}
             </div>
-            <div className="hidden sm:block flex-col text-left">
-              <p className="font-bold text-espresso text-sm leading-tight">{user?.name || 'Guest'}</p>
-              <p className="text-xs text-primary font-semibold">Hosteler</p>
+            {/* Tooltip for logout */}
+            <div className="absolute top-14 right-0 bg-white shadow-lg rounded-xl px-4 py-2 text-[13px] font-semibold text-[#8C3F3F] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-[#E8D9CF]">
+               Logout
             </div>
           </div>
-          <motion.button onClick={handleLogout} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-10 h-10 flex flex-shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-500 cursor-pointer">
-            <FiLogOut className="w-5 h-5" />
-          </motion.button>
+          
         </div>
-      </div>
-    </motion.header>
+        </div>
+      </motion.header>
+    </div>
   );
 };
 
-const WelcomeBanner = ({ user, onRequestCustom }) => (
-  <motion.div variants={itemVariants} className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-    <div className="text-left">
-      <h2 className="text-4xl lg:text-5xl font-serif font-black text-espresso tracking-tight">
-        Hi, <span className="text-primary">{user?.name?.split(' ')[0]}! 👋</span>
-      </h2>
-      <p className="text-espresso-light font-medium mt-1">What home food are you craving on campus today?</p>
-    </div>
-    <motion.button
-      whileHover={{ scale: 1.05, y: -2 }}
-      whileTap={{ scale: 0.95 }}
-      onClick={onRequestCustom}
-      className="bg-primary hover:bg-primary-hover text-white font-black px-6 py-3.5 rounded-2xl shadow-lg shadow-primary/20 flex items-center gap-2 text-base transition-all cursor-pointer"
-    >
-      Request Custom Food
-    </motion.button>
-  </motion.div>
-);
+const WelcomeBanner = ({ user, onRequestCustom }) => {
+  const firstName = user?.name?.split(' ')[0] || 'Maggie';
+  return (
+    <motion.div variants={itemVariants} className="mb-10 w-full relative bg-[linear-gradient(90deg,#C45257_0%,#D63447_46%,#FADBB0_91%)] rounded-[30px] overflow-hidden flex flex-col md:flex-row shadow-xl">
+      {/* Text content left */}
+      <div className="p-8 md:p-12 lg:px-[64px] lg:py-[48px] flex-1 text-left z-10">
+         <p className="text-white/95 text-sm md:text-[15px] font-medium tracking-wide mb-4 flex items-center gap-2">
+           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+             <path d="M8 0L9.8 6.2L16 8L9.8 9.8L8 16L6.2 9.8L0 8L6.2 6.2L8 0Z" fill="white"/>
+           </svg>
+           Good Afternoon, {firstName}
+         </p>
+         <h2 className="text-white font-serif text-[36px] sm:text-[42px] lg:text-[48px] leading-[1.1] mb-5 font-bold tracking-tight">
+           Every craving deserves a <br/> homemade touch.
+         </h2>
+         <p className="text-white/90 font-medium text-[15px] md:text-[17px] mb-8">
+           Find comforting meals prepared just for you.
+         </p>
+         <div className="flex flex-wrap items-center gap-4">
+           <motion.button
+              whileHover={{ scale: 1.05, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onRequestCustom}
+              className="bg-white text-black font-semibold px-7 py-3.5 rounded-[999px] text-[16px] transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+           >
+              <span className="text-xl leading-none font-bold">+</span> Post a Craving
+           </motion.button>
+           <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => document.getElementById('craving-section')?.scrollIntoView({ behavior: 'smooth' })}
+              className="bg-transparent border border-white text-white font-semibold px-7 py-3.5 rounded-[999px] text-[16px] hover:bg-white hover:text-[#4D2B2B] transition-all flex items-center gap-2 cursor-pointer"
+           >
+              Browse menu <FiChevronRight />
+           </motion.button>
+         </div>
+      </div>
+      
+      {/* Illustration right */}
+      <div className="hidden md:block absolute right-4 bottom-0 top-0 w-[55%] overflow-hidden pointer-events-none z-0">
+        <img 
+          src="/lunchbox.png" 
+          alt="Homemade lunch boxes" 
+          className="w-full h-full object-contain object-right scale-110 origin-right"
+        />
+      </div>
+    </motion.div>
+  );
+};
 
 const MyCustomRequests = ({ requests, onCancel }) => (
-  <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 relative overflow-hidden">
+  <motion.div variants={itemVariants} className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100 relative overflow-hidden">
     <h3 className="text-xl font-serif font-black text-espresso flex items-center gap-3 mb-6">
       <span className="bg-secondary/15 text-secondary text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest ring-1 ring-secondary/20">LIVE</span>
       My Custom Requests
@@ -381,44 +456,31 @@ const MyCustomRequests = ({ requests, onCancel }) => (
   </motion.div>
 );
 
-const AvailableToday = ({ meals, cookStats, onOrder, searchQuery, setSearchQuery, selectedTag, setSelectedTag }) => (
-  <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50">
-    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
-      <h3 className="text-xl font-serif font-black text-espresso flex items-center gap-3">
-        <span className="bg-primary/10 text-primary text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest ring-1 ring-primary/20">LIVE</span>
-        Available on Campus
+const AvailableToday = ({ meals, cookStats, onOrder, selectedTag, setSelectedTag }) => (
+  <motion.div id="craving-section" variants={itemVariants} className="w-full">
+    <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-8">
+      <h3 className="text-[48px] font-serif text-[#4D2B2B] flex items-center gap-4 leading-none">
+        <span className="bg-[#D0555D] text-white text-[12px] font-bold px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1.5 shadow-sm transform -translate-y-1">
+          <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+          Live
+        </span>
+        What are you craving?
       </h3>
-      
-      {/* Search Input inside Available Today card */}
-      <div className="relative flex items-center w-full md:w-72 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 shadow-inner">
-        <FiSearch className="text-gray-400 mr-2 w-4 h-4 stroke-[3]" />
-        <input 
-          type="text" 
-          placeholder="Search dishes, cooks..." 
-          value={searchQuery} 
-          onChange={e => setSearchQuery(e.target.value)} 
-          className="w-full text-xs font-bold bg-transparent focus:outline-none text-espresso" 
-        />
-        {searchQuery && (
-          <button onClick={() => setSearchQuery("")} className="text-gray-400 hover:text-red-500">
-            <FiX className="w-3.5 h-3.5 stroke-[3]" />
-          </button>
-        )}
-      </div>
+      <button className="text-[#8C3F3F] font-bold text-[18px] hover:underline cursor-pointer font-serif transition-colors">See All</button>
     </div>
 
     {/* Sleek Filter Tags row */}
-    <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-100 pb-4 font-sans">
+    <div className="flex flex-wrap gap-[16px] mb-10 font-sans">
       {["All", "Veg Only", "Non-Veg Only", "Bestseller", "Spicy"].map((tag) => {
         const isActive = selectedTag === tag;
         return (
           <button
             key={tag}
             onClick={() => setSelectedTag(tag)}
-            className={`px-3 py-1.5 rounded-xl text-[10px] font-black tracking-wider uppercase border transition-all cursor-pointer ${
+            className={`px-7 py-3 rounded-[999px] text-[16px] font-semibold transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${
               isActive 
-                ? 'bg-primary text-white border-primary shadow-md shadow-primary/15' 
-                : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-gray-500'
+                ? 'bg-[#8C3F3F] text-white' 
+                : 'bg-white text-[#4D2B2B] hover:bg-[#8C3F3F] hover:text-white border border-[#E8D9CF]'
             }`}
           >
             {tag}
@@ -427,47 +489,74 @@ const AvailableToday = ({ meals, cookStats, onOrder, searchQuery, setSearchQuery
       })}
     </div>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-      {meals.length === 0 ? <p className="text-gray-400 col-span-2 text-left">No meals match your criteria.</p> :
-      meals.map((item, idx) => (
-        <motion.div key={item._id} whileHover={{ scale: 1.02, y: -4 }} className="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm hover:shadow-xl transition-all flex flex-col justify-between group relative overflow-hidden text-left">
-          {item.tag && (
-            <div className={`absolute top-0 right-0 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white ${item.tag === 'Bestseller' ? 'bg-secondary' : 'bg-primary'} rounded-bl-xl z-10`}>
-              {item.tag}
+    {meals.length === 0 ? (
+      <div className="text-center py-16 px-4 bg-[#FFF5EF] rounded-[22px] border border-[#E8D9CF] border-dashed">
+        <span className="text-5xl mb-4 block animate-bounce-slow">🍳</span>
+        <p className="text-[#4D2B2B] font-bold text-xl mb-2">Kitchen is quiet</p>
+        <p className="text-[#4D2B2B]/70 text-[16px] font-medium">No meals available right now. Check back later!</p>
+      </div>
+    ) : (
+      <div className="relative group/carousel">
+        <div className="flex gap-[32px] overflow-x-auto pb-12 pt-4 px-2 -mx-2 custom-scrollbar snap-x relative" id="meals-carousel">
+          {meals.map((meal) => (
+          <div key={meal._id} className="min-w-[300px] w-[300px] snap-start bg-[#FFF5EF] rounded-[22px] shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-[#E8D9CF]/50 flex flex-col relative text-left group cursor-pointer">
+            
+            {/* Image Section */}
+            <div className="relative h-[180px] w-full bg-gray-100 overflow-hidden rounded-t-[22px]">
+              <img src={meal.image || '/src/assets/image.png'} alt={meal.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out" />
+              
+              {/* Tags (Bestseller, Spicy) */}
+              {meal.tag && (
+                <div className={`absolute top-0 right-0 text-white font-bold text-[10px] uppercase tracking-wider px-4 py-1.5 rounded-bl-[16px] shadow-sm ${meal.tag === 'Spicy' ? 'bg-[#C96D6D]' : meal.tag === 'New' ? 'bg-[#6D2F2F]' : 'bg-[#D19A3B]'}`}>
+                  {meal.tag}
+                </div>
+              )}
+              
+              {/* Veg/NonVeg Badge */}
+              <div className={`absolute bottom-3 left-3 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-md ${meal.isVeg !== false ? 'bg-[#4CAF50]' : 'bg-[#8C3F3F]'}`}>
+                <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+                {meal.isVeg !== false ? 'Veg' : 'Non-Veg'}
+              </div>
             </div>
-          )}
-          <div>
-            <div className="w-12 h-12 bg-primary/10 rounded-2xl mb-4 flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition-transform">
-               {['🍲','🍛','🥘','🍳'][idx % 4]}
+
+            {/* Content Section */}
+            <div className="p-6 pt-5 flex flex-col flex-1 justify-between">
+              <div>
+                <h4 className="font-serif font-bold text-[28px] text-[#4D2B2B] mb-2 leading-tight line-clamp-2">{meal.title}</h4>
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="text-[14px] text-[#4D2B2B]/70 font-medium tracking-wide">By <span className="font-semibold text-[#4D2B2B]">{meal.cookName || 'Unknown'}</span></span>
+                  <span className="bg-white text-[#D19A3B] text-[12px] font-bold px-2 py-0.5 rounded shadow-sm flex items-center gap-1">
+                    <FiStar className="w-3.5 h-3.5 fill-current" /> {cookStats[meal.createdBy]?.averageRating > 0 ? cookStats[meal.createdBy].averageRating.toFixed(1) : '4.8'} <span className="text-[#4D2B2B]/40 font-medium">({cookStats[meal.createdBy]?.totalReviews || 126})</span>
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-end mt-2">
+                <div className="flex flex-col">
+                  <span className="text-[#4D2B2B]/50 text-[11px] uppercase tracking-wider font-bold mb-0.5">Price</span>
+                  <span className="font-serif font-bold text-[24px] text-[#8C3F3F] leading-none">₹{meal.price}</span>
+                </div>
+                <button 
+                  onClick={() => onOrder(meal)}
+                  className="bg-[#8C3F3F] group-hover:bg-[#4D2B2B] text-white font-semibold text-[14px] px-5 py-2.5 rounded-[999px] transition-all duration-300 shadow-md hover:shadow-lg flex items-center gap-1.5 cursor-pointer transform active:scale-95"
+                >
+                  Order <FiArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${item.isVeg !== false ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${item.isVeg !== false ? 'bg-green-500 animate-pulse' : 'bg-red-500 animate-pulse'}`}></span>
-                {item.isVeg !== false ? 'Veg' : 'Non-Veg'}
-              </span>
-            </div>
-            <p className="font-black text-xl text-espresso mb-1 leading-tight">
-               {item.title}
-            </p>
-            <p className="text-sm font-medium text-espresso-light flex items-center gap-2 mb-3">
-              By <span className="font-bold text-espresso">{item.cookName}</span>
-              <span className="flex items-center text-secondary font-bold bg-secondary/10 px-2 py-0.5 rounded-md border border-secondary/20">
-                <FiStar className="fill-current w-3 h-3 mr-1" />
-                {cookStats[item.createdBy]?.averageRating > 0 
-                  ? `${cookStats[item.createdBy].averageRating.toFixed(1)} (${cookStats[item.createdBy].totalReviews})` 
-                  : 'New Cook'}
-              </span>
-            </p>
           </div>
-          <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
-            <p className="font-black text-primary text-2xl">₹{item.price}</p>
-            <motion.button onClick={() => onOrder(item)} whileTap={{ scale: 0.95 }} className="px-5 py-2 text-sm font-black text-white bg-espresso hover:bg-primary rounded-xl shadow-md transition-colors cursor-pointer">
-              Order +
-            </motion.button>
-          </div>
-        </motion.div>
-      ))}
-    </div>
+        ))}
+        </div>
+        
+        {/* Carousel Arrow */}
+        <button 
+          onClick={() => document.getElementById('meals-carousel').scrollBy({ left: 350, behavior: 'smooth' })}
+          className="hidden lg:flex absolute -right-6 top-[40%] -translate-y-1/2 bg-white text-[#8C3F3F] w-14 h-14 rounded-full shadow-lg border border-[#E8D9CF] items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 hover:scale-110 hover:shadow-xl cursor-pointer z-10"
+        >
+          <FiChevronRight className="w-8 h-8 stroke-[2]" />
+        </button>
+      </div>
+    )}
   </motion.div>
 );
 
@@ -476,7 +565,7 @@ const OrderTracking = ({ activeOrder, activeOrdersCount }) => {
   const currentStep = activeOrder ? steps.indexOf(activeOrder.status) : -1;
 
   return (
-    <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 relative overflow-hidden">
+    <motion.div variants={itemVariants} className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-secondary"></div>
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-serif font-black text-espresso flex items-center gap-3">
@@ -551,8 +640,8 @@ const OrderTracking = ({ activeOrder, activeOrdersCount }) => {
 };
 
 const OrderHistory = ({ orders, myReviews, onRateOrder }) => (
-  <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50">
-    <div className="flex justify-between items-center mb-6">
+  <motion.div variants={itemVariants} className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
       <h3 className="text-xl font-serif font-black text-espresso flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-lg text-primary"><FiClock /></div> Past Orders</h3>
     </div>
     {orders.length === 0 ? <p className="text-gray-400">Your history is empty.</p> :

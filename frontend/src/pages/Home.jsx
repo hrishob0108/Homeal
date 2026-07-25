@@ -2,13 +2,14 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaUtensils, FaStar, FaArrowRight, FaPlay, FaHeart, FaHandshake } from "react-icons/fa";
-import { FiUserPlus, FiEdit, FiBell, FiAward, FiEye, FiZap, FiCheck, FiChevronRight, FiMapPin, FiShield, FiUser, FiCreditCard, FiStar, FiCamera, FiUsers } from "react-icons/fi";
+import { FiUserPlus, FiEdit, FiBell, FiAward, FiEye, FiZap, FiCheck, FiChevronRight, FiMapPin, FiShield, FiUser, FiCreditCard, FiStar, FiCamera, FiUsers, FiMenu, FiX } from "react-icons/fi";
 import { IoRestaurant, IoWalletOutline } from "react-icons/io5";
 import heroThaliImage from "../assets/image_transparent.png";
 import howItWorksImage from "../assets/image copy.png";
 
 const Home = () => {
   const [isNavHidden, setIsNavHidden] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     let timeoutId;
@@ -88,11 +89,11 @@ const Home = () => {
           ))}
         </div>
 
-        {/* Right Buttons */}
-        <div className="flex items-center gap-6">
+        {/* Right Buttons & Mobile Menu Toggle */}
+        <div className="flex items-center gap-4 sm:gap-6">
           <Link
             to="/login"
-            className="relative py-1 font-bold text-espresso/85 hover:text-primary transition-colors text-xs uppercase tracking-wider cursor-pointer group"
+            className="hidden sm:block relative py-1 font-bold text-espresso/85 hover:text-primary transition-colors text-xs uppercase tracking-wider cursor-pointer group"
           >
             Log In
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full rounded-full" />
@@ -101,12 +102,64 @@ const Home = () => {
             <motion.button
               whileHover={{ scale: 1.05, y: -1 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-primary hover:bg-primary-hover text-white px-5 py-2 rounded-full font-bold transition-all cursor-pointer text-xs uppercase tracking-wider shadow-md shadow-primary/10 hover:shadow-lg hover:shadow-primary/20"
+              className="bg-primary hover:bg-primary-hover text-white px-4 sm:px-5 py-2 rounded-full font-bold transition-all cursor-pointer text-xs uppercase tracking-wider shadow-md shadow-primary/10 hover:shadow-lg hover:shadow-primary/20"
             >
               Sign Up
             </motion.button>
           </Link>
+          <button 
+            className="md:hidden text-espresso hover:text-primary transition-colors p-1"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? <FiX className="text-2xl" /> : <FiMenu className="text-2xl" />}
+          </button>
         </div>
+
+        {/* Mobile Dropdown Menu */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute top-[120%] left-0 w-full bg-white/95 backdrop-blur-xl rounded-2xl border border-white/50 shadow-xl overflow-hidden flex flex-col md:hidden"
+            >
+              {[
+                { label: 'Home', path: '/home', isLink: true },
+                { label: 'How It Works', path: '#how-it-works', isLink: false },
+                { label: 'About', path: '#about', isLink: false },
+                { label: 'Contact', path: '#contact', isLink: false }
+              ].map((item) => (
+                item.isLink ? (
+                  <Link
+                    key={item.label}
+                    to={item.path}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="px-6 py-4 border-b border-espresso/5 font-bold text-espresso hover:bg-primary/5 hover:text-primary transition-colors text-sm uppercase tracking-wider"
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <a
+                    key={item.label}
+                    href={item.path}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="px-6 py-4 border-b border-espresso/5 font-bold text-espresso/80 hover:bg-primary/5 hover:text-primary transition-colors text-sm uppercase tracking-wider"
+                  >
+                    {item.label}
+                  </a>
+                )
+              ))}
+              <Link
+                to="/login"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="px-6 py-4 font-bold text-primary hover:bg-primary/5 transition-colors text-sm uppercase tracking-wider"
+              >
+                Log In
+              </Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.nav>
 
       {/* HERO SECTION */}
@@ -214,7 +267,7 @@ const Home = () => {
 
             <div className="mb-6 relative w-full">
               {/* Add line spacing using letter-spacing */}
-              <h1 className="text-6xl sm:text-7xl lg:text-7.5xl font-serif font-black text-espresso tracking-tight leading-[1.2] mb-6 ">
+              <h1 className="text-5xl sm:text-6xl lg:text-7.5xl font-serif font-black text-espresso tracking-tight leading-[1.2] mb-6 ">
                 Craving <br />
                 <span className="text-primary">Ghar Ka Khana?</span> <br />
                 We've Got You!
@@ -223,7 +276,7 @@ const Home = () => {
               <motion.span
                 animate={{ scale: [0.9, 1.05, 0.9] }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className="absolute top-8 left-[230px] sm:left-[280px] text-primary text-2xl select-none"
+                className="absolute top-8 left-[230px] sm:left-[280px] text-primary text-2xl select-none hidden sm:block"
               >
                 ✿
               </motion.span>
@@ -289,18 +342,18 @@ const Home = () => {
           </div>
 
           {/* Right Hero Column - Platter on Solid red/maroon Circle Backdrop */}
-          <div className="lg:col-span-6 flex justify-center items-center relative py-10 lg:py-0 overflow-visible">
+          <div className="lg:col-span-6 flex justify-center items-center relative py-12 lg:py-0 overflow-visible min-h-[350px] sm:min-h-[450px] lg:min-h-0 mt-8 lg:mt-0">
             {/* Massive solid primary red circle backdrop bleeding off edge */}
-            <div className="absolute w-[24rem] h-[24rem] sm:w-[32rem] sm:h-[32rem] lg:w-[36rem] lg:h-[36rem] rounded-full bg-[#A84444] z-0 right-[-45%] top-[-16rem] shadow-xl" />
+            <div className="absolute w-[18rem] h-[18rem] sm:w-[28rem] sm:h-[28rem] lg:w-[36rem] lg:h-[36rem] rounded-full bg-[#A84444] z-0 right-[-10%] sm:right-[-20%] lg:right-[-45%] top-[5%] lg:top-[-16rem] shadow-xl" />
 
             {/* Meal illustration (Static & Absolutely Positioned) */}
             <div
-              className="absolute z-10 w-96 sm:w-[28rem] lg:w-[46rem] h-96 sm:h-[28rem] lg:h-[46rem] right-[-40%] top-[-21rem] overflow-visible"
+              className="absolute z-10 w-72 sm:w-[26rem] lg:w-[46rem] h-72 sm:h-[26rem] lg:h-[46rem] right-[-10%] sm:right-[-20%] lg:right-[-40%] top-[0%] lg:top-[-21rem] overflow-visible"
             >
               <img
                 src={heroThaliImage}
                 alt="Traditional Cravyo Thali Platter"
-                className="w-full h-full object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.3)] top-[-10%]"
+                className="w-full h-full object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.3)] lg:top-[-10%]"
               />
             </div>
           </div>
@@ -865,7 +918,7 @@ const Home = () => {
         <div className="rounded-[40px] shadow-md relative overflow-hidden flex flex-col lg:flex-row items-center justify-end w-full mx-auto bg-gradient-to-b from-[#B0464A] from-[75%] via-[#DCA69D] via-[88%] to-[#FFF0DD] to-[97%] min-h-[480px]">
 
           {/* Image on the left */}
-          <div className="absolute left-[-160px] bottom-[-10px] w-full lg:w-[50%] h-[110%] flex items-end pointer-events-none z-0">
+          <div className="absolute left-[-60px] lg:left-[-160px] bottom-[-10px] w-[120%] lg:w-[50%] h-[110%] flex items-end pointer-events-none z-0 opacity-20 lg:opacity-100">
             <img
               src="/image copy 3.png"
               alt="Hand pouring spices on food bowl"
@@ -876,7 +929,7 @@ const Home = () => {
           {/* Text Content on the Right */}
           <div className="relative z-10 w-full lg:w-[60%] lg:mr-52 text-center py-16 px-6 lg:px-10 flex flex-col items-center">
 
-            <h2 className="text-4xl sm:text-5xl lg:text-[46px] font-serif font-black mb-4 tracking-wide w-fit whitespace-nowrap">
+            <h2 className="text-4xl sm:text-5xl lg:text-[46px] font-serif font-black mb-4 tracking-wide text-center">
               <span className="bg-gradient-to-r from-[#E5C9A4] from-0% md:from-[52%] to-[#4A1A1A] to-100% md:to-[52%] bg-clip-text text-transparent">
                 Ready to Taste Home?
               </span>
