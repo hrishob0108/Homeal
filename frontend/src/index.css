@@ -11,13 +11,13 @@
   --color-border: #E8D9CF;
   --color-card: #FFF5EF;
   --color-hover: #6D2F2F;
-  --color-bg: #FFF8F2;
+  --color-bg: #FFF0DD;
   --color-espresso: #4D2B2B;
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #FFF8F2;
+  background-color: #FFF0DD;
   color: #4D2B2B;
 }
 

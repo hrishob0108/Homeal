@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiHome, FiUser, FiShoppingCart, FiSearch, FiClock, FiPackage, FiStar, FiLogOut, FiTrendingUp, FiMapPin, FiArrowRight, FiX, FiBell, FiChevronRight } from 'react-icons/fi';
+import { FiHome, FiUser, FiShoppingCart, FiSearch, FiClock, FiPackage, FiStar, FiLogOut, FiTrendingUp, FiMapPin, FiArrowRight, FiX, FiBell, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -187,11 +187,7 @@ const HostelerDashboard = () => {
   const pendingRequests = myRequests.filter(r => r.status === 'Pending');
 
   return (
-    <div className="bg-cream bg-dot-pattern min-h-screen font-sans relative overflow-x-hidden text-espresso pb-12">
-      {/* Dynamic Floating Visuals */}
-      <span className="fixed top-24 left-[5%] text-primary/10 text-5xl animate-float pointer-events-none select-none">✿</span>
-      <span className="fixed bottom-24 right-[5%] text-secondary/15 text-4xl animate-float pointer-events-none select-none" style={{ animationDelay: '2s' }}>🍃</span>
-      <span className="fixed top-1/2 right-[8%] text-primary/10 text-3xl animate-float pointer-events-none select-none" style={{ animationDelay: '1.5s' }}>✿</span>
+    <div className="bg-cream min-h-screen font-sans relative overflow-x-hidden text-espresso pb-12">
 
       <div className="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-primary/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
       <div className="fixed bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-secondary/15 rounded-full blur-[120px] pointer-events-none z-0"></div>
@@ -269,7 +265,7 @@ const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, 
         initial={{ y: -100 }} 
         animate={{ y: 0 }} 
         transition={{ type: "spring", stiffness: 100, damping: 20 }} 
-        className="w-full max-w-7xl h-[90px] bg-[#FFF8F2]/80 backdrop-blur-md border border-[#E8D9CF] rounded-[25px] shadow-md flex items-center px-12 pointer-events-auto"
+        className="w-full max-w-full h-[90px] bg-[#FFF8F2]/80 backdrop-blur-md border border-[#E8D9CF] rounded-[25px] shadow-md flex items-center px-12 pointer-events-auto"
       >
         <div className="flex w-full justify-between items-center h-full relative">
           
@@ -406,11 +402,11 @@ const WelcomeBanner = ({ user, onRequestCustom }) => {
       </div>
       
       {/* Illustration right */}
-      <div className="hidden md:block absolute right-4 bottom-0 top-0 w-[55%] overflow-hidden pointer-events-none z-0">
+      <div className="hidden md:block absolute right-0 bottom-0 top-0 w-[55%] overflow-hidden pointer-events-none z-0">
         <img 
           src="/lunchbox.png" 
           alt="Homemade lunch boxes" 
-          className="w-full h-full object-contain object-right scale-110 origin-right"
+          className="w-full h-full object-contain object-right scale-200 origin-right translate-x-6"
         />
       </div>
     </motion.div>
@@ -466,7 +462,7 @@ const AvailableToday = ({ meals, cookStats, onOrder, selectedTag, setSelectedTag
         </span>
         What are you craving?
       </h3>
-      <button className="text-[#8C3F3F] font-bold text-[18px] hover:underline cursor-pointer font-serif transition-colors">See All</button>
+      <Link to="/all-meals" className="text-[#8C3F3F] font-bold text-[18px] hover:underline cursor-pointer font-serif transition-colors">See All</Link>
     </div>
 
     {/* Sleek Filter Tags row */}
@@ -497,50 +493,47 @@ const AvailableToday = ({ meals, cookStats, onOrder, selectedTag, setSelectedTag
       </div>
     ) : (
       <div className="relative group/carousel">
-        <div className="flex gap-[32px] overflow-x-auto pb-12 pt-4 px-2 -mx-2 custom-scrollbar snap-x relative" id="meals-carousel">
+        <div className="flex gap-[20px] overflow-x-auto pb-12 pt-4 px-2 -mx-2 custom-scrollbar snap-x relative" id="meals-carousel">
           {meals.map((meal) => (
-          <div key={meal._id} className="min-w-[300px] w-[300px] snap-start bg-[#FFF5EF] rounded-[22px] shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-[#E8D9CF]/50 flex flex-col relative text-left group cursor-pointer">
+          <div key={meal._id} className="min-w-[240px] w-[240px] snap-start bg-[#F4DCD0] rounded-xl shadow-md border border-[#E3C2B1] flex flex-col relative text-left group cursor-pointer transition-transform duration-300 hover:-translate-y-1">
             
             {/* Image Section */}
-            <div className="relative h-[180px] w-full bg-gray-100 overflow-hidden rounded-t-[22px]">
-              <img src={meal.image || '/src/assets/image.png'} alt={meal.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out" />
+            <div className="relative h-[160px] w-full bg-gray-200 overflow-hidden rounded-t-xl">
+              <img src={meal.image || '/src/assets/image.png'} alt={meal.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
               
               {/* Tags (Bestseller, Spicy) */}
               {meal.tag && (
-                <div className={`absolute top-0 right-0 text-white font-bold text-[10px] uppercase tracking-wider px-4 py-1.5 rounded-bl-[16px] shadow-sm ${meal.tag === 'Spicy' ? 'bg-[#C96D6D]' : meal.tag === 'New' ? 'bg-[#6D2F2F]' : 'bg-[#D19A3B]'}`}>
+                <div className={`absolute top-0 right-0 text-white font-bold text-[11px] px-3 py-1 rounded-bl-xl shadow-sm ${meal.tag === 'Spicy' ? 'bg-[#DF3747]' : meal.tag === 'New' ? 'bg-[#964751]' : 'bg-[#C48C5E]'}`}>
                   {meal.tag}
                 </div>
               )}
               
               {/* Veg/NonVeg Badge */}
-              <div className={`absolute bottom-3 left-3 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-md ${meal.isVeg !== false ? 'bg-[#4CAF50]' : 'bg-[#8C3F3F]'}`}>
+              <div className={`absolute bottom-2 left-2 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md ${meal.isVeg !== false ? 'bg-[#3DB143]' : 'bg-[#C62828]'}`}>
                 <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
                 {meal.isVeg !== false ? 'Veg' : 'Non-Veg'}
               </div>
             </div>
 
             {/* Content Section */}
-            <div className="p-6 pt-5 flex flex-col flex-1 justify-between">
+            <div className="px-4 py-3 flex flex-col flex-1 justify-between">
               <div>
-                <h4 className="font-serif font-bold text-[28px] text-[#4D2B2B] mb-2 leading-tight line-clamp-2">{meal.title}</h4>
-                <div className="flex items-center gap-3 mb-5">
-                  <span className="text-[14px] text-[#4D2B2B]/70 font-medium tracking-wide">By <span className="font-semibold text-[#4D2B2B]">{meal.cookName || 'Unknown'}</span></span>
-                  <span className="bg-white text-[#D19A3B] text-[12px] font-bold px-2 py-0.5 rounded shadow-sm flex items-center gap-1">
-                    <FiStar className="w-3.5 h-3.5 fill-current" /> {cookStats[meal.createdBy]?.averageRating > 0 ? cookStats[meal.createdBy].averageRating.toFixed(1) : '4.8'} <span className="text-[#4D2B2B]/40 font-medium">({cookStats[meal.createdBy]?.totalReviews || 126})</span>
+                <h4 className="font-serif font-bold text-[22px] text-[#412121] leading-tight mb-1 truncate">{meal.title}</h4>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[13px] text-[#694A42]">By <span className="font-bold text-[#412121]">{meal.cookName || 'Unknown'}</span></span>
+                  <span className="bg-[#E2CEBF] text-[#91674E] text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                    <FiStar className="w-3 h-3 text-[#DFA460] fill-current" /> {cookStats[meal.createdBy]?.averageRating > 0 ? cookStats[meal.createdBy].averageRating.toFixed(1) : '4.8'}<span className="text-[#91674E]/70 font-medium text-[10px]">({cookStats[meal.createdBy]?.totalReviews || 126})</span>
                   </span>
                 </div>
               </div>
               
-              <div className="flex justify-between items-end mt-2">
-                <div className="flex flex-col">
-                  <span className="text-[#4D2B2B]/50 text-[11px] uppercase tracking-wider font-bold mb-0.5">Price</span>
-                  <span className="font-serif font-bold text-[24px] text-[#8C3F3F] leading-none">₹{meal.price}</span>
-                </div>
+              <div className="flex justify-between items-center pt-2 border-t border-[#E6CDBC]">
+                <span className="font-sans font-bold text-[20px] text-[#692E31]">₹{meal.price}</span>
                 <button 
                   onClick={() => onOrder(meal)}
-                  className="bg-[#8C3F3F] group-hover:bg-[#4D2B2B] text-white font-semibold text-[14px] px-5 py-2.5 rounded-[999px] transition-all duration-300 shadow-md hover:shadow-lg flex items-center gap-1.5 cursor-pointer transform active:scale-95"
+                  className="bg-[#5B292D] hover:bg-[#431D1F] text-white font-medium text-[13px] px-3 py-1.5 rounded-md transition-colors shadow-sm cursor-pointer"
                 >
-                  Order <FiArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  Order +
                 </button>
               </div>
             </div>
@@ -548,10 +541,16 @@ const AvailableToday = ({ meals, cookStats, onOrder, selectedTag, setSelectedTag
         ))}
         </div>
         
-        {/* Carousel Arrow */}
+        {/* Carousel Arrows */}
+        <button 
+          onClick={() => document.getElementById('meals-carousel').scrollBy({ left: -350, behavior: 'smooth' })}
+          className="hidden lg:flex absolute -left-6 top-[40%] -translate-y-1/2 bg-[#FFF8F2] hover:bg-[#F4DCD0] text-[#692E31] w-14 h-14 rounded-full shadow-md border border-[#E3C2B1] items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg cursor-pointer z-10"
+        >
+          <FiChevronLeft className="w-8 h-8 stroke-[2]" />
+        </button>
         <button 
           onClick={() => document.getElementById('meals-carousel').scrollBy({ left: 350, behavior: 'smooth' })}
-          className="hidden lg:flex absolute -right-6 top-[40%] -translate-y-1/2 bg-white text-[#8C3F3F] w-14 h-14 rounded-full shadow-lg border border-[#E8D9CF] items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 hover:scale-110 hover:shadow-xl cursor-pointer z-10"
+          className="hidden lg:flex absolute -right-6 top-[40%] -translate-y-1/2 bg-[#FFF8F2] hover:bg-[#F4DCD0] text-[#692E31] w-14 h-14 rounded-full shadow-md border border-[#E3C2B1] items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg cursor-pointer z-10"
         >
           <FiChevronRight className="w-8 h-8 stroke-[2]" />
         </button>
@@ -608,11 +607,32 @@ const OrderTracking = ({ activeOrder, activeOrdersCount }) => {
                                   {step === 'Pending' ? "Waiting for the cook to accept your request." : `Your order is currently ${step.toLowerCase()}.`}
                                 </motion.div>
                            )}
-                           {isActive && activeOrder.proofImageUrl && step === 'Out for Delivery' && (
+                           
+                           {/* Escrow Details: Cooking Proof */}
+                           {(isActive || isPast) && activeOrder.cookingProofImageUrl && step === 'Preparing' && (
                                <div className="mt-3 pl-4 flex flex-col items-start gap-2">
-                                  <img src={activeOrder.proofImageUrl} alt="Proof" className="w-24 h-24 object-cover rounded-xl border border-gray-200 shadow-sm" />
-                                  <span className="text-xs font-bold text-white bg-primary px-2 py-1 rounded">Proof Uploaded!</span>
+                                  <img src={activeOrder.cookingProofImageUrl} alt="Cooking Proof" className="w-24 h-24 object-cover rounded-xl border border-gray-200 shadow-sm" />
+                                  <span className="text-xs font-bold text-white bg-indigo-500 px-2 py-1 rounded">Cooking Proof</span>
                                 </div>
+                           )}
+
+                           {/* Escrow Details: Delivery Proof & OTP */}
+                           {isActive && step === 'Out for Delivery' && (
+                               <div className="mt-4 pl-4 flex flex-col gap-3">
+                                  {activeOrder.otp && (
+                                    <div className="bg-green-50 border-2 border-green-200 rounded-xl p-3 flex flex-col items-center">
+                                      <p className="text-xs font-bold text-green-700 uppercase tracking-widest mb-1">Your Delivery OTP</p>
+                                      <p className="text-3xl font-black text-green-600 font-mono tracking-widest">{activeOrder.otp}</p>
+                                      <p className="text-[10px] text-green-600/70 font-medium text-center mt-1">Give this PIN to the cook when receiving your food</p>
+                                    </div>
+                                  )}
+                                  {(activeOrder.handoverProofImageUrl || activeOrder.proofImageUrl) && (
+                                    <div className="flex flex-col items-start gap-2">
+                                      <img src={activeOrder.handoverProofImageUrl || activeOrder.proofImageUrl} alt="Handover Proof" className="w-24 h-24 object-cover rounded-xl border border-gray-200 shadow-sm" />
+                                      <span className="text-xs font-bold text-white bg-primary px-2 py-1 rounded">Handover Proof</span>
+                                    </div>
+                                  )}
+                               </div>
                            )}
                         </div>
                        )

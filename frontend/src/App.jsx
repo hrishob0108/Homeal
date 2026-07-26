@@ -8,6 +8,7 @@ import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard/Dashboard';
 import DayscholarDashboard from './pages/Dashboard/DayscholarDashboard';
 import HostelerDashboard from './pages/Dashboard/HostelerDashboard';
+import AllMeals from './pages/AllMeals';
 import SelectRole from './pages/SelectRole';
 import TrackOrders from './pages/TrackOrders';
 import { Toaster } from 'react-hot-toast';
@@ -35,6 +36,7 @@ const App = () => {
       {/* ✅ Clean URLs for role-based dashboards */}
       <Route path="/dayscholar-dashboard" element={<DayscholarDashboard />} />
       <Route path="/hosteler-dashboard" element={<HostelerDashboard />} />
+      <Route path="/all-meals" element={<AllMeals />} />
       <Route path="/track-orders" element={<TrackOrders />} />
 
       {/* Optional backward redirects (if you ever used camelCase before) */}
