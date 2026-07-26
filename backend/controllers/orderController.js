@@ -11,6 +11,8 @@ const createOrder = async (req, res) => {
   }
 
   try {
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
     const order = new Order({
       buyerId: req.user._id,
       buyerName: req.user.name,
@@ -20,7 +22,8 @@ const createOrder = async (req, res) => {
       price,
       deliveryLocation,
       neededBy,
-      status: "Pending"
+      status: "Pending",
+      otp: otp
     });
 
     const savedOrder = await order.save();
@@ -67,7 +70,7 @@ const getDayscholarRequests = async (req, res) => {
 // @route   PUT /api/orders/:id/status
 // @access  Private
 const updateOrderStatus = async (req, res) => {
-  const { status, proofImageUrl } = req.body;
+  const { status, proofImageUrl, cookingProofImageUrl, handoverProofImageUrl, otp } = req.body;
 
   if (req.user.role !== "dayscholar") {
     return res.status(403).json({ message: "Only dayscholars can update order status." });
@@ -83,8 +86,18 @@ const updateOrderStatus = async (req, res) => {
        return res.status(403).json({ message: "Not authorized to update this order: only the assigned seller can." });
     }
 
+    if (status === 'Delivered') {
+      // Verify OTP if the order has one
+      if (order.otp && req.body.otp !== order.otp) {
+        return res.status(400).json({ message: "Invalid Delivery OTP. Please ask the hosteler for the correct PIN." });
+      }
+      order.isOtpVerified = true;
+    }
+
     if(status) order.status = status;
     if(proofImageUrl) order.proofImageUrl = proofImageUrl;
+    if(cookingProofImageUrl) order.cookingProofImageUrl = cookingProofImageUrl;
+    if(handoverProofImageUrl) order.handoverProofImageUrl = handoverProofImageUrl;
 
     const updatedOrder = await order.save();
     req.io.to(order.buyerId.toString()).emit('order_status_updated', updatedOrder);

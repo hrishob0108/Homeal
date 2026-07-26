@@ -15,7 +15,11 @@ const orderSchema = new mongoose.Schema(
       enum: ["Pending", "Accepted", "Declined", "Preparing", "Out for Delivery", "Delivered"],
       default: "Pending"
     },
-    proofImageUrl: { type: String, default: "" }
+    cookingProofImageUrl: { type: String, default: "" },
+    handoverProofImageUrl: { type: String, default: "" },
+    otp: { type: String, required: false },
+    isOtpVerified: { type: Boolean, default: false },
+    proofImageUrl: { type: String, default: "" } // Kept for backward compatibility
   },
   { timestamps: true }
 );

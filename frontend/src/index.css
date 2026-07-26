@@ -1,28 +1,29 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Outfit:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Poppins:wght@100..900&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Poppins", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", Georgia, serif;
 
-  --color-primary: #A84444;
-  --color-primary-hover: #933838;
-  --color-secondary: #D19A3B;
-  --color-cream: #FFEFE6;
-  --color-sage: #EBF2E8;
-  --color-espresso: #3C2222;
-  --color-espresso-light: #5C3D3D;
+  --color-primary: #8C3F3F;
+  --color-accent: #C96D6D;
+  --color-text: #4D2B2B;
+  --color-border: #E8D9CF;
+  --color-card: #FFF5EF;
+  --color-hover: #6D2F2F;
+  --color-bg: #FFF0DD;
+  --color-espresso: #4D2B2B;
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #FFEFE6;
-  color: #3C2222;
+  background-color: #FFF0DD;
+  color: #4D2B2B;
 }
 
-/* Futuristic subtle dot pattern */
+/* Subtle dot pattern exactly like reference (5% opacity) */
 .bg-dot-pattern {
-  background-image: radial-gradient(rgba(168, 68, 68, 0.05) 1.5px, transparent 1.5px);
+  background-image: radial-gradient(rgba(140, 63, 63, 0.05) 1.5px, transparent 1.5px);
   background-size: 24px 24px;
 }
 

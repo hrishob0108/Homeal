@@ -75,12 +75,11 @@ const Register = () => {
       
       {/* Background Graphic - Food Thali on Left */}
       <div className="absolute inset-0 w-full h-full z-0 flex items-center justify-start overflow-hidden pointer-events-none">
-        <div className="w-full lg:w-[65%] h-full relative p-4 lg:p-8">
+        <div className="hidden lg:block w-full lg:w-[65%] h-full relative p-4 lg:p-8">
           <img
             src="/Signup.png"
             alt="Indian Thali background"
             className="w-full h-full object-contain object-left lg:scale-[1.4] origin-left translate-y-7 -translate-x-20"
-
           />
           {/* Gradient to seamlessly blend the image's right edge into the solid background */}
           <div className="hidden lg:block absolute inset-y-0 right-0 w-48 bg-gradient-to-r from-transparent to-[#9B4549]"></div>
@@ -103,7 +102,7 @@ const Register = () => {
         initial={{ opacity: 0, scale: 0.96, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.5, type: "spring", bounce: 0.2 }}
-        className="relative z-10 w-full max-w-[500px] lg:mr-8 xl:mr-16 bg-white/10 backdrop-blur-xl border border-white/35 rounded-[32px] p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] my-4 -translate-x-30"
+        className="relative z-10 w-[90%] max-w-[440px] mx-auto lg:mx-0 lg:mr-8 xl:mr-16 bg-white/10 backdrop-blur-xl border border-white/35 rounded-[32px] p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] my-4 lg:-translate-x-30"
       >
         {/* Card Header */}
         <div className="text-center mb-5">
