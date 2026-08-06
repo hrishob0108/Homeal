@@ -82,7 +82,7 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
     return window.recaptchaVerifier;
   };
 
-  // Handle Send Real Mobile SMS OTP via Firebase Auth API
+  // Handle Send Real Mobile SMS OTP via Firebase Auth API with Backend SMS fallback
   const handleSendOtp = async () => {
     const cleanPhone = phone.replace(/\D/g, "");
     if (cleanPhone.length < 10) {
@@ -96,13 +96,13 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
     try {
       const appVerifier = getRecaptchaVerifier();
 
-      // Dispatch Real Physical SMS via Firebase Phone Auth
+      // Attempt Dispatch via Firebase Phone Auth
       const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
       window.confirmationResult = confirmationResult;
       setOtpSent(true);
-      toast.success(`Real SMS OTP sent via Firebase to ${formattedPhone}! Check your phone.`, { duration: 7000 });
+      toast.success(`SMS OTP sent via Firebase to ${formattedPhone}! Check your phone.`, { duration: 7000 });
     } catch (err) {
-      console.error("Firebase Phone Auth Error:", err);
+      console.warn("Firebase Phone Auth Error, falling back to Backend SMS Service:", err);
       // Reset verifier on error so retry works cleanly
       if (window.recaptchaVerifier) {
         try {
@@ -115,21 +115,25 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
         container.innerHTML = "";
       }
       
-      let msg = err.message || "Failed to send SMS via Firebase.";
-      if (err.code === "auth/operation-not-allowed" || msg.includes("region enabled")) {
-        msg = "Firebase SMS Region Policy: Please allow India (+91) in Firebase Console > Authentication > Settings > SMS region policy.";
-      } else if (err.code === "auth/invalid-app-credential" || msg.includes("invalid-app-credential")) {
-        msg = "Firebase App Credential error: Please add your test phone number (+91 9392984213 -> 123456) in Firebase Console > Authentication > Sign-in method > Phone > Phone numbers for testing.";
+      // Fallback: Dispatch OTP using Backend SMS Service
+      try {
+        const res = await api.post("/auth/send-phone-otp", { phone: cleanPhone });
+        window.confirmationResult = null; // Mark as backend-dispatched
+        setOtpSent(true);
+        setErrorMsg("");
+        toast.success(`OTP generated for +91 ${cleanPhone}! (Check SMS / Backend Console)`, { duration: 8000 });
+      } catch (backendErr) {
+        console.error("Backend OTP Dispatch Error:", backendErr);
+        const msg = backendErr.response?.data?.message || "Failed to send SMS OTP. Please check your network or server.";
+        setErrorMsg(msg);
+        toast.error(msg, { duration: 9000 });
       }
-      
-      setErrorMsg(msg);
-      toast.error(msg, { duration: 9000 });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle Verify Real Mobile SMS OTP via Firebase Auth
+  // Handle Verify Real Mobile SMS OTP via Firebase or Backend Service
   const handleVerifyOtp = async () => {
     const cleanPhone = phone.replace(/\D/g, "");
     if (!otpInput.trim()) {
@@ -140,24 +144,40 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
     setIsSubmitting(true);
     setErrorMsg("");
 
-    if (!window.confirmationResult) {
-      setErrorMsg("No active SMS session. Please click Send OTP first.");
-      setIsSubmitting(false);
-      return;
+    // 1. If Firebase session is active, try Firebase verification
+    if (window.confirmationResult) {
+      try {
+        const result = await window.confirmationResult.confirm(otpInput.trim());
+        if (result && result.user) {
+          setIsPhoneVerified(true);
+          setOtpSent(false);
+          setErrorMsg("");
+          toast.success("Phone number verified successfully with Firebase!");
+          setIsSubmitting(false);
+          return;
+        }
+      } catch (fbErr) {
+        console.warn("Firebase confirmation failed, attempting backend verification:", fbErr);
+      }
     }
 
+    // 2. Fallback / direct verification via Backend OTP endpoint
     try {
-      const result = await window.confirmationResult.confirm(otpInput.trim());
-      if (result && result.user) {
+      const response = await api.post("/auth/verify-phone-otp", {
+        phone: cleanPhone,
+        otp: otpInput.trim()
+      });
+      if (response.data && response.data.success) {
         setIsPhoneVerified(true);
         setOtpSent(false);
         setErrorMsg("");
-        toast.success("Phone number verified successfully with Firebase!");
+        toast.success("Phone number verified successfully!");
       }
-    } catch (fbErr) {
-      console.error("Firebase OTP verification error:", fbErr);
-      setErrorMsg(fbErr.message || "Invalid SMS OTP code. Please check your SMS messages.");
-      toast.error("Invalid SMS code. Please try again.");
+    } catch (backendVerifyErr) {
+      console.error("Backend OTP Verification error:", backendVerifyErr);
+      const msg = backendVerifyErr.response?.data?.message || "Invalid OTP code. Please check and try again.";
+      setErrorMsg(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
