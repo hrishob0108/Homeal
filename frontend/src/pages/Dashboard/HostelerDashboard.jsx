@@ -582,14 +582,14 @@ const AvailableToday = ({ meals, cookStats, onOrder, selectedTag, setSelectedTag
 
 const HostelerStatsSection = ({ myOrders = [], myReviews = [] }) => {
   const deliveredCount = myOrders.filter(o => o.status === 'Delivered').length;
-  const mealsOrdered = deliveredCount > 0 ? deliveredCount : 24;
+  const mealsOrdered = deliveredCount;
   
-  const uniqueCooks = new Set(myOrders.map(o => o.sellerId?._id || o.sellerId)).size;
-  const favoriteCount = uniqueCooks > 0 ? uniqueCooks : 6;
+  const uniqueCooks = new Set(myOrders.map(o => o.sellerId?._id || o.sellerId).filter(Boolean)).size;
+  const favoriteCount = uniqueCooks;
   
   const avgRating = myReviews.length > 0 
     ? (myReviews.reduce((acc, r) => acc + r.rating, 0) / myReviews.length).toFixed(1) 
-    : '4.8';
+    : '0.0';
     
   const thisMonthCount = myOrders.filter(o => {
     if (!o.createdAt) return false;
@@ -597,7 +597,7 @@ const HostelerStatsSection = ({ myOrders = [], myReviews = [] }) => {
     const now = new Date();
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).length;
-  const thisMonthVal = thisMonthCount > 0 ? thisMonthCount : 8;
+  const thisMonthVal = thisMonthCount;
 
   const stats = [
     {
@@ -683,18 +683,11 @@ const HostelerStatsSection = ({ myOrders = [], myReviews = [] }) => {
 };
 
 const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
-  const steps = ['Pending', 'Accepted', 'Preparing', 'Out for Delivery'];
-  
-  const displayOrder = activeOrder || {
-    dishName: 'Rajma chawal',
-    sellerId: '6a65bf412',
-    status: 'Out for Delivery',
-    otp: '3281',
-    cookingProofImageUrl: '/Aarav S.png'
-  };
+  if (!activeOrder) return null;
 
-  const rawStatus = displayOrder.status || 'Preparing';
-  const currentStepIndex = steps.indexOf(rawStatus) !== -1 ? steps.indexOf(rawStatus) : 2;
+  const steps = ['Pending', 'Accepted', 'Preparing', 'Out for Delivery'];
+  const rawStatus = activeOrder.status || 'Pending';
+  const currentStepIndex = steps.indexOf(rawStatus) !== -1 ? steps.indexOf(rawStatus) : 0;
 
   return (
     <motion.section variants={itemVariants} className="my-10 w-full text-left">
@@ -735,28 +728,30 @@ const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
               </div>
               <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-[#EBD8C8] min-w-[220px]">
                 <h4 className="font-serif font-bold text-lg text-[#3A201C] leading-tight">
-                  {displayOrder.dishName}
+                  {activeOrder.dishName}
                 </h4>
                 <p className="text-xs text-[#8A6A62] font-semibold mt-1">
-                  Provider ID: {displayOrder.sellerId ? `${displayOrder.sellerId.substring(0, 6)}..` : '6a65bf..'}
+                  Provider: {activeOrder.sellerName || 'Dayscholar Cook'}
                 </p>
               </div>
             </div>
 
             {/* Cooking Proof image above Preparing step */}
-            <div className="flex flex-col items-center sm:mr-32 md:mr-44 lg:mr-56">
-              <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-md border-2 border-white bg-white">
-                <img 
-                  src={displayOrder.cookingProofImageUrl || '/Aarav S.png'} 
-                  alt="Cook proof" 
-                  className="w-full h-full object-cover"
-                  onError={(e) => { e.target.src = '/hero-meal.png'; }}
-                />
+            {activeOrder.cookingProofImageUrl && (
+              <div className="flex flex-col items-center sm:mr-32 md:mr-44 lg:mr-56">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-md border-2 border-white bg-white">
+                  <img 
+                    src={activeOrder.cookingProofImageUrl} 
+                    alt="Cook proof" 
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.target.src = '/hero-meal.png'; }}
+                  />
+                </div>
+                <span className="bg-[#E99696] text-[#6A1C1C] text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-[#D97C7C] -mt-2.5 shadow-xs z-10">
+                  Cooking Proof
+                </span>
               </div>
-              <span className="bg-[#E99696] text-[#6A1C1C] text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-[#D97C7C] -mt-2.5 shadow-xs z-10">
-                Cooking Proof
-              </span>
-            </div>
+            )}
           </div>
 
           {/* 4-Step Stepper with Alternating Labels */}
@@ -820,16 +815,18 @@ const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
             {/* OTP Box & Status text */}
             <div className="flex flex-col items-end">
               <p className="text-xs text-[#7A5B53] font-medium mb-2 text-right">
-                Your order is currently {displayOrder.status?.toLowerCase() || 'out for delivery'}
+                Your order is currently {activeOrder.status?.toLowerCase() || 'in progress'}
               </p>
-              <div className="bg-[#D7EBDC] border-2 border-[#A2D3AC] rounded-2xl px-8 py-3 text-center min-w-[190px] shadow-xs">
-                <p className="text-[11px] font-bold text-[#3B7A4E] tracking-wider uppercase mb-0.5">
-                  Your Delivery OTP
-                </p>
-                <p className="text-3xl font-black text-[#2A7541] font-mono tracking-widest leading-none">
-                  {displayOrder.otp || '3281'}
-                </p>
-              </div>
+              {activeOrder.otp && (
+                <div className="bg-[#D7EBDC] border-2 border-[#A2D3AC] rounded-2xl px-8 py-3 text-center min-w-[190px] shadow-xs">
+                  <p className="text-[11px] font-bold text-[#3B7A4E] tracking-wider uppercase mb-0.5">
+                    Your Delivery OTP
+                  </p>
+                  <p className="text-3xl font-black text-[#2A7541] font-mono tracking-widest leading-none">
+                    {activeOrder.otp}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -841,36 +838,28 @@ const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
 const ActiveRequestsSection = ({ requests = [], activeOrders = [], onCancel }) => {
   let activeList = [];
 
-  if (activeOrders.length > 0 || requests.length > 0) {
-    activeOrders.forEach((o) => {
-      activeList.push({
-        id: o._id,
-        dishName: o.dishName,
-        cookName: o.sellerName || 'Aarav S.',
-        time: o.createdAt ? new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '12:30 PM',
-        eta: o.status === 'Accepted' ? '20 min' : null,
-        status: o.status || 'Accepted',
-        image: o.imageUrl || '/cravyo_hero_thali.png'
-      });
+  activeOrders.forEach((o) => {
+    activeList.push({
+      id: o._id,
+      dishName: o.dishName,
+      cookName: o.sellerName || 'Dayscholar Cook',
+      time: o.createdAt ? new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+      eta: o.status === 'Accepted' ? '20 min' : null,
+      status: o.status || 'Accepted',
+      image: o.imageUrl || '/cravyo_hero_thali.png'
     });
-    requests.forEach((r) => {
-      activeList.push({
-        id: r._id,
-        dishName: r.dishName,
-        cookName: 'Custom Request',
-        time: r.neededBy || '1:00 PM',
-        eta: null,
-        status: 'Pending',
-        image: '/lunchbox.png'
-      });
+  });
+  requests.forEach((r) => {
+    activeList.push({
+      id: r._id,
+      dishName: r.dishName,
+      cookName: 'Custom Request',
+      time: r.neededBy || 'ASAP',
+      eta: null,
+      status: 'Pending',
+      image: '/lunchbox.png'
     });
-  } else {
-    activeList = [
-      { id: '1', dishName: 'Chicken Biryani', cookName: 'Aarav S.', time: '12:30 PM', eta: '20 min', status: 'Accepted', image: '/cravyo_hero_thali.png' },
-      { id: '2', dishName: 'Prawns', cookName: 'Hrishob P.', time: '1:00 PM', eta: null, status: 'Pending', image: '/lunchbox.png' },
-      { id: '3', dishName: 'Paratha', cookName: 'Rohan K.', time: 'Yesterday', eta: null, status: 'Delivered', image: '/hero-meal.png' }
-    ];
-  }
+  });
 
   return (
     <motion.div variants={itemVariants} className="bg-[#FFF6EF] border border-[#F0D5C5] rounded-[28px] p-6 lg:p-7 shadow-sm text-left">
@@ -887,51 +876,59 @@ const ActiveRequestsSection = ({ requests = [], activeOrders = [], onCancel }) =
         </span>
       </div>
 
-      {/* List */}
-      <div className="space-y-3.5">
-        {activeList.map((item, idx) => (
-          <div 
-            key={item.id || idx}
-            className="bg-[#FBF0E6] border border-[#EED7C7] rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4"
-          >
-            <div className="flex items-center gap-3.5">
-              <img 
-                src={item.image || '/cravyo_hero_thali.png'} 
-                alt={item.dishName} 
-                className="w-14 h-14 rounded-xl object-cover shadow-xs border border-[#EAD0BE] bg-white shrink-0"
-                onError={(e) => { e.target.src = '/hero-meal.png'; }}
-              />
-              <div>
-                <h4 className="font-serif font-bold text-base text-[#3A201C] leading-tight">
-                  {item.dishName}
-                </h4>
-                <p className="text-xs text-[#8A6A62] font-semibold mt-0.5">
-                  {item.cookName} • 🕒 {item.time}
-                </p>
-                {/* Progress bar */}
-                <div className="h-1.5 w-32 sm:w-44 bg-gradient-to-r from-[#D07060] to-[#E8C0B0] rounded-full mt-2" />
-                {item.eta && (
-                  <p className="text-[11px] text-[#8A6A62] font-medium mt-1">
-                    ETA: {item.eta}
+      {/* List / Empty State */}
+      {activeList.length === 0 ? (
+        <div className="py-12 px-4 text-center bg-[#FBF0E6]/60 border border-dashed border-[#EED7C7] rounded-2xl flex flex-col items-center justify-center gap-2">
+          <FiClock className="w-8 h-8 text-[#8A6A62]/40" />
+          <p className="text-base font-bold text-[#3A201C]">No active requests</p>
+          <p className="text-xs text-[#8A6A62] max-w-xs">Custom meal requests and in-progress orders will appear here once placed.</p>
+        </div>
+      ) : (
+        <div className="space-y-3.5">
+          {activeList.map((item, idx) => (
+            <div 
+              key={item.id || idx}
+              className="bg-[#FBF0E6] border border-[#EED7C7] rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4"
+            >
+              <div className="flex items-center gap-3.5">
+                <img 
+                  src={item.image || '/cravyo_hero_thali.png'} 
+                  alt={item.dishName} 
+                  className="w-14 h-14 rounded-xl object-cover shadow-xs border border-[#EAD0BE] bg-white shrink-0"
+                  onError={(e) => { e.target.src = '/hero-meal.png'; }}
+                />
+                <div>
+                  <h4 className="font-serif font-bold text-base text-[#3A201C] leading-tight">
+                    {item.dishName}
+                  </h4>
+                  <p className="text-xs text-[#8A6A62] font-semibold mt-0.5">
+                    {item.cookName} • 🕒 {item.time}
                   </p>
-                )}
+                  {/* Progress bar */}
+                  <div className="h-1.5 w-32 sm:w-44 bg-gradient-to-r from-[#D07060] to-[#E8C0B0] rounded-full mt-2" />
+                  {item.eta && (
+                    <p className="text-[11px] text-[#8A6A62] font-medium mt-1">
+                      ETA: {item.eta}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <span className={`text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider border ${
+                  item.status === 'Accepted' 
+                    ? 'bg-[#FCEAE8] border-[#F3B8B2] text-[#D04545]'
+                    : item.status === 'Pending'
+                    ? 'bg-[#FEF5E7] border-[#FCDAA8] text-[#C98420]'
+                    : 'bg-[#EAF6ED] border-[#BBE3C8] text-[#34965C]'
+                }`}>
+                  {item.status}
+                </span>
               </div>
             </div>
-
-            <div>
-              <span className={`text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider border ${
-                item.status === 'Accepted' 
-                  ? 'bg-[#FCEAE8] border-[#F3B8B2] text-[#D04545]'
-                  : item.status === 'Pending'
-                  ? 'bg-[#FEF5E7] border-[#FCDAA8] text-[#C98420]'
-                  : 'bg-[#EAF6ED] border-[#BBE3C8] text-[#34965C]'
-              }`}>
-                {item.status}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 };
@@ -945,20 +942,14 @@ const PastRequestsSection = ({ orders = [], myReviews = [], onRateOrder, onReord
       return {
         id: o._id,
         dishName: o.dishName,
-        cookName: o.sellerName || 'Aarav S.',
-        date: new Date(o.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+        cookName: o.sellerName || 'Dayscholar Chef',
+        date: o.createdAt ? new Date(o.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Recent',
         price: o.price,
-        rating: review ? `${review.rating}/5` : '5/5',
+        rating: review ? `${review.rating}/5` : null,
         status: o.status === 'Declined' ? 'Canceled' : o.status,
         image: o.imageUrl || '/lunchbox.png'
       };
     });
-  } else {
-    pastList = [
-      { id: 'p1', dishName: 'Chicken Biryani', cookName: 'Aarav S.', date: 'Yesterday', price: 90, rating: '5/5', status: 'Delivered', image: '/cravyo_hero_thali.png' },
-      { id: 'p2', dishName: 'Prawns', cookName: 'Hrishob P.', date: '2 days ago', price: 110, rating: null, status: 'Canceled', image: '/lunchbox.png' },
-      { id: 'p3', dishName: 'Paratha', cookName: 'Rohan K.', date: 'Yesterday', price: 100, rating: '4.5/5', status: 'Delivered', image: '/hero-meal.png' }
-    ];
   }
 
   return (
@@ -981,60 +972,68 @@ const PastRequestsSection = ({ orders = [], myReviews = [], onRateOrder, onReord
         </div>
       </div>
 
-      {/* List */}
-      <div className="space-y-3.5">
-        {pastList.map((item, idx) => (
-          <div 
-            key={item.id || idx}
-            className="bg-[#FBF0E6] border border-[#EED7C7] rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4"
-          >
-            <div className="flex items-center gap-3.5">
-              <img 
-                src={item.image || '/lunchbox.png'} 
-                alt={item.dishName} 
-                className="w-14 h-14 rounded-xl object-cover shadow-xs border border-[#EAD0BE] bg-white shrink-0"
-                onError={(e) => { e.target.src = '/hero-meal.png'; }}
-              />
-              <div>
-                <h4 className="font-serif font-bold text-base text-[#3A201C] leading-tight">
-                  {item.dishName}
-                </h4>
-                <p className="text-xs text-[#8A6A62] font-semibold mt-0.5">
-                  {item.cookName} • 📅 {item.date}
-                </p>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="font-black text-[#A82B2B] text-sm">
-                    ₹{item.price}
-                  </span>
-                  {item.rating && (
-                    <span className="text-xs font-bold text-[#8A6A62] flex items-center gap-0.5">
-                      <FiStar className="w-3.5 h-3.5 fill-[#E5A83B] text-[#E5A83B]" /> {item.rating}
+      {/* List / Empty State */}
+      {pastList.length === 0 ? (
+        <div className="py-12 px-4 text-center bg-[#FBF0E6]/60 border border-dashed border-[#EED7C7] rounded-2xl flex flex-col items-center justify-center gap-2">
+          <FiPackage className="w-8 h-8 text-[#8A6A62]/40" />
+          <p className="text-base font-bold text-[#3A201C]">No past requests yet</p>
+          <p className="text-xs text-[#8A6A62] max-w-xs">Delivered and completed orders will appear here for easy reordering and rating.</p>
+        </div>
+      ) : (
+        <div className="space-y-3.5">
+          {pastList.map((item, idx) => (
+            <div 
+              key={item.id || idx}
+              className="bg-[#FBF0E6] border border-[#EED7C7] rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4"
+            >
+              <div className="flex items-center gap-3.5">
+                <img 
+                  src={item.image || '/lunchbox.png'} 
+                  alt={item.dishName} 
+                  className="w-14 h-14 rounded-xl object-cover shadow-xs border border-[#EAD0BE] bg-white shrink-0"
+                  onError={(e) => { e.target.src = '/hero-meal.png'; }}
+                />
+                <div>
+                  <h4 className="font-serif font-bold text-base text-[#3A201C] leading-tight">
+                    {item.dishName}
+                  </h4>
+                  <p className="text-xs text-[#8A6A62] font-semibold mt-0.5">
+                    {item.cookName} • 📅 {item.date}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="font-black text-[#A82B2B] text-sm">
+                      ₹{item.price}
                     </span>
-                  )}
+                    {item.rating && (
+                      <span className="text-xs font-bold text-[#8A6A62] flex items-center gap-0.5">
+                        <FiStar className="w-3.5 h-3.5 fill-[#E5A83B] text-[#E5A83B]" /> {item.rating}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex flex-col items-end gap-2">
-              <span className={`text-[11px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider border ${
-                item.status === 'Delivered'
-                  ? 'bg-[#EAF6ED] border-[#BBE3C8] text-[#34965C]'
-                  : 'bg-[#FDECEC] border-[#F7BABA] text-[#D84545]'
-              }`}>
-                {item.status}
-              </span>
-              {item.status === 'Delivered' && (
-                <button 
-                  onClick={() => onReorder && onReorder(item)}
-                  className="bg-white border border-[#E5A8A8] text-[#9E3F3F] font-semibold text-xs px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-xs hover:bg-[#FFF0F0] cursor-pointer transition-colors"
-                >
-                  <FiRepeat className="w-3 h-3" /> Reorder
-                </button>
-              )}
+              <div className="flex flex-col items-end gap-2">
+                <span className={`text-[11px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider border ${
+                  item.status === 'Delivered'
+                    ? 'bg-[#EAF6ED] border-[#BBE3C8] text-[#34965C]'
+                    : 'bg-[#FDECEC] border-[#F7BABA] text-[#D84545]'
+                }`}>
+                  {item.status}
+                </span>
+                {item.status === 'Delivered' && (
+                  <button 
+                    onClick={() => onReorder && onReorder(item)}
+                    className="bg-white border border-[#E5A8A8] text-[#9E3F3F] font-semibold text-xs px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-xs hover:bg-[#FFF0F0] cursor-pointer transition-colors"
+                  >
+                    <FiRepeat className="w-3 h-3" /> Reorder
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 };
