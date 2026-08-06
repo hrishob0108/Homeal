@@ -263,10 +263,10 @@ const HostelerDashboard = () => {
 
 // Sub-components
 const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, setIsNotifOpen, searchQuery, setSearchQuery }) => {
-  if (!user || !user.token || !user.collegeName || !user.collegeName.trim() || !user.isPhoneVerified) return null;
-
   const handleLogout = () => {
     sessionStorage.removeItem('currentUser');
+    sessionStorage.removeItem('user');
+    localStorage.removeItem('token');
     toast.success("Successfully logged out");
     navigate('/login');
   };
