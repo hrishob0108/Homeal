@@ -70,11 +70,7 @@ const TrackOrders = () => {
   const steps = ['Pending', 'Accepted', 'Preparing', 'Out for Delivery', 'Delivered'];
 
   return (
-    <div className="bg-cream min-h-screen font-sans relative overflow-x-hidden text-espresso pb-16 select-none">
-      
-      {/* Decorative background blobs */}
-      <div className="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-primary/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
-      <div className="fixed bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-secondary/15 rounded-full blur-[120px] pointer-events-none z-0"></div>
+    <div className="bg-[#FFF0DD] min-h-screen font-sans relative overflow-x-hidden text-espresso pb-16 select-none">
 
       {/* Header */}
       <header className="fixed top-0 w-full z-50 px-4 sm:px-6 lg:px-12 py-4">
