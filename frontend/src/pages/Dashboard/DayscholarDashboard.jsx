@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FiBell, FiCheckCircle, FiStar, FiMapPin, FiClock, FiTruck, FiZap, FiMenu, FiSmile, FiLogOut, FiEdit2, FiTrash2, FiX, FiArrowRight
+  FiBell, FiCheckCircle, FiStar, FiMapPin, FiClock, FiTruck, FiZap, FiMenu, FiSmile, FiLogOut, FiEdit2, FiTrash2, FiX, FiImage, FiLink, FiUpload, FiArrowRight
 } from 'react-icons/fi';
 import { FaRupeeSign, FaFire } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
@@ -53,7 +53,7 @@ const DayscholarDashboard = () => {
     fetchDashboardData();
 
     // Cloudinary setup
-    let myWidget = window.cloudinary.createUploadWidget(
+    let myWidget = window.cloudinary?.createUploadWidget(
       { cloudName: "dfseckyjx", uploadPreset: "qbvu3y5j", sources: ['camera'] },
       (error, result) => {
         if (!error && result && result.event === "success") {
@@ -222,9 +222,7 @@ const DayscholarDashboard = () => {
   ];
 
   return (
-    <div className="bg-cream min-h-screen font-sans relative overflow-x-hidden text-espresso pb-12">
-      <div className="fixed top-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-secondary/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
-      <div className="fixed bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-primary/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
+    <div className="bg-[#FFF0DD] min-h-screen font-sans relative overflow-x-hidden text-espresso pb-12">
 
       <Header user={user} navigate={navigate} notifications={notifications} setNotifications={setNotifications} isNotifOpen={isNotifOpen} setIsNotifOpen={setIsNotifOpen} />
 
@@ -238,6 +236,7 @@ const DayscholarDashboard = () => {
               <NewFoodRequests requests={newRequests} onUpdateStatus={handleUpdateStatus} />
               <CustomFoodRequestsFeed requests={customRequests} onAccept={handleAcceptRequest} />
               <ActiveDeliveries deliveries={activeDeliveries} wid={wid} localUploads={localUploads} onUpdateStatus={handleUpdateStatus} onUploadProof={handleUploadProof} activeOrderIdRef={activeOrderIdRef} otpInputs={otpInputs} setOtpInputs={setOtpInputs} />
+              <CustomFoodRequestsFeed requests={customRequests} onAccept={handleAcceptRequest} />
             </div>
             <div className="space-y-8">
               <QuickActions />
@@ -439,7 +438,7 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
                        className="bg-[#8C3F3F]/10 hover:bg-[#8C3F3F] border border-[#8C3F3F]/30 text-[#8C3F3F] hover:text-white font-bold px-5 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-2 text-sm cursor-pointer whitespace-nowrap"
                        onClick={() => {
                          activeOrderIdRef.current = { id: delivery._id, type: 'cooking' };
-                         wid.current.open();
+                         wid.current?.open();
                        }}
                      >
                        <FiZap className="text-amber-500" /> 1. Upload Cooking Proof
@@ -480,7 +479,7 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
                        className="bg-[#8C3F3F] hover:bg-[#A34B4B] text-white font-bold px-4 py-2.5 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 w-full cursor-pointer text-sm"
                        onClick={() => {
                          activeOrderIdRef.current = { id: delivery._id, type: 'handover' };
-                         wid.current.open();
+                         wid.current?.open();
                        }}
                      >
                        <FiZap className="text-amber-300" /> Upload Handover Proof
@@ -504,26 +503,159 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
 );
 
 const QuickActions = () => (
-    <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50">
-      <h3 className="text-xl font-black text-gray-900 flex items-center gap-3 mb-6">
-        <div className="p-2 bg-purple-100 rounded-lg text-purple-600"><FiZap /></div> Quick Actions
-      </h3>
-      <div className="space-y-3">
-        <button onClick={() => toast("Analytics feature coming soon!")} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-between hover:bg-gray-100 transition-colors font-bold text-sm text-gray-700 cursor-pointer">
-          <span className="flex items-center gap-2">📈 View Analytics & Earnings</span>
-          <FiArrowRight />
+  <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50">
+    <h3 className="text-xl font-black text-gray-900 flex items-center gap-3 mb-6">
+      <div className="p-2 bg-purple-100 rounded-lg text-purple-600"><FiZap /></div> Quick Actions
+    </h3>
+    <div className="space-y-3">
+      <button onClick={() => toast("Analytics feature coming soon!")} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-between hover:bg-gray-100 transition-colors font-bold text-sm text-gray-700 cursor-pointer">
+        <span className="flex items-center gap-2">📈 View Analytics & Earnings</span>
+        <FiArrowRight />
+      </button>
+    </div>
+  </motion.div>
+);
+
+const ImageUploadBox = ({ value, onChange, placeholder = "Paste link, upload photo, or paste image (Ctrl+V)" }) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFileUpload = async (file) => {
+    if (!file || !file.type.startsWith('image/')) {
+      toast.error("Please select a valid image file.");
+      return;
+    }
+    setIsUploading(true);
+    const toastId = toast.loading("Uploading image...");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", "qbvu3y5j");
+      const res = await fetch("https://api.cloudinary.com/v1_1/dfseckyjx/image/upload", {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (data.secure_url) {
+        onChange(data.secure_url);
+        toast.success("Image uploaded successfully!", { id: toastId });
+      } else {
+        // Fallback to Base64 FileReader
+        const reader = new FileReader();
+        reader.onload = () => {
+          onChange(reader.result);
+          toast.success("Image attached!", { id: toastId });
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err) {
+      console.error(err);
+      // Fallback to Base64 FileReader
+      const reader = new FileReader();
+      reader.onload = () => {
+        onChange(reader.result);
+        toast.success("Image attached!", { id: toastId });
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          e.preventDefault();
+          const blob = items[i].getAsFile();
+          if (blob) {
+            handleFileUpload(blob);
+            return;
+          }
+        }
+      }
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2 w-full text-left" onPaste={handlePaste}>
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        accept="image/*" 
+        className="hidden" 
+        onChange={(e) => {
+          if (e.target.files && e.target.files[0]) {
+            handleFileUpload(e.target.files[0]);
+          }
+        }} 
+      />
+
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <FiLink className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+          <input 
+            type="text" 
+            placeholder={placeholder}
+            className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary/50 focus:outline-none text-xs bg-white"
+            value={value || ''} 
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </div>
+
+        <button 
+          type="button" 
+          disabled={isUploading}
+          onClick={() => fileInputRef.current?.click()} 
+          className="flex items-center gap-1.5 px-3 py-2 bg-secondary/10 hover:bg-secondary/20 text-secondary font-bold text-xs rounded-lg border border-secondary/20 transition-all cursor-pointer whitespace-nowrap shadow-xs"
+          title="Upload from device"
+        >
+          {isUploading ? (
+            <span className="animate-spin text-sm">⏳</span>
+          ) : (
+            <FiUpload className="w-3.5 h-3.5" />
+          )}
+          <span>{isUploading ? "Uploading..." : "Upload File"}</span>
         </button>
       </div>
-    </motion.div>
+
+      {value && (
+        <div className="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-gray-200 w-full">
+          <img 
+            src={value} 
+            alt="Dish Preview" 
+            className="w-12 h-12 rounded-md object-cover border border-gray-200 shadow-xs shrink-0" 
+            onError={(e) => { e.target.src = '/image.png'; }} 
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-bold text-gray-700 truncate">{value.startsWith('data:') ? 'Pasted Image File' : value}</p>
+            <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">✓ Image Ready</span>
+          </div>
+          <button 
+            type="button" 
+            onClick={() => onChange('')} 
+            className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+            title="Remove image"
+          >
+            <FiX className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      <p className="text-[11px] text-gray-400 italic">
+        💡 <b>3 Ways:</b> Paste an image link, click <b>Upload File</b>, or simply press <b>Ctrl + V</b> to paste copied images directly.
+      </p>
+    </div>
   );
+};
 
 const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
   const [isAdding, setIsAdding] = useState(false);
-  const [form, setForm] = useState({ title: '', price: '', tag: 'New', isVeg: true });
+  const [form, setForm] = useState({ title: '', price: '', image: '', tag: 'New', isVeg: true });
   
-  // Edit State
   const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ title: '', price: '', isVeg: true });
+  const [editForm, setEditForm] = useState({ title: '', price: '', image: '', isVeg: true });
 
   const handlePublish = async (e) => {
      e.preventDefault();
@@ -534,7 +666,7 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
        if(res.status === 200 || res.status === 201) {
           toast.success("Dish Published seamlessly!");
           setIsAdding(false);
-          setForm({ title: '', price: '', tag: 'New', isVeg: true });
+          setForm({ title: '', price: '', image: '', tag: 'New', isVeg: true });
           fetchDashboardData();
        } else {
           toast.error("Failed to post dish.");
@@ -584,17 +716,21 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
       <span className="text-xs font-bold bg-emerald-100 px-2 py-1 rounded-md text-emerald-600">{menu.length} Items</span>
     </div>
     {menu.length === 0 ? <p className="text-gray-400">You haven't added any meals yet.</p> : (
-        <ul className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+        <ul className="space-y-3 max-h-[340px] overflow-y-auto pr-2 custom-scrollbar">
         {menu.map((item) => (
             <motion.li key={item._id} className="relative p-0 bg-gray-50 border border-gray-100 rounded-xl hover:border-gray-200 transition-colors group overflow-hidden">
                {editingId === item._id ? (
-                  <form onSubmit={e => handleUpdateItem(e, item._id)} className="flex flex-col gap-2 p-3 bg-indigo-50/50">
+                  <form onSubmit={e => handleUpdateItem(e, item._id)} className="flex flex-col gap-2.5 p-3.5 bg-indigo-50/50">
                      <div className="flex items-center gap-2">
-                        <input type="text" className="w-full px-3 py-1.5 text-sm font-bold border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} autoFocus />
-                        <input type="number" className="w-20 px-3 py-1.5 text-sm font-black text-emerald-600 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} />
-                        <button type="submit" className="bg-indigo-500 text-white p-2 rounded-lg hover:bg-indigo-600 shadow-sm"><FiCheckCircle /></button>
-                        <button type="button" onClick={() => setEditingId(null)} className="bg-gray-200 text-gray-600 p-2 rounded-lg hover:bg-red-100 hover:text-red-500 transition-colors"><FiX /></button>
+                        <input type="text" className="w-full px-3 py-1.5 text-sm font-bold border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} autoFocus placeholder="Dish title" />
+                        <input type="number" className="w-24 px-3 py-1.5 text-sm font-black text-emerald-600 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} placeholder="Price" />
+                        <button type="submit" className="bg-indigo-500 text-white p-2 rounded-lg hover:bg-indigo-600 shadow-sm cursor-pointer"><FiCheckCircle /></button>
+                        <button type="button" onClick={() => setEditingId(null)} className="bg-gray-200 text-gray-600 p-2 rounded-lg hover:bg-red-100 hover:text-red-500 transition-colors cursor-pointer"><FiX /></button>
                      </div>
+                     <ImageUploadBox 
+                        value={editForm.image} 
+                        onChange={(img) => setEditForm({...editForm, image: img})} 
+                     />
                      <div className="flex gap-4 items-center pl-1">
                         <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-gray-600">
                            <input type="radio" checked={editForm.isVeg === true} onChange={() => setEditForm({...editForm, isVeg: true})} className="text-emerald-500 focus:ring-emerald-500" /> Veg 🟢
@@ -605,18 +741,30 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
                      </div>
                   </form>
                ) : (
-                  <div className="flex justify-between items-center p-4">
-                     <span className="font-bold text-gray-800 flex items-center gap-1.5">
-                       <span>{item.isVeg !== false ? '🟢' : '🔴'}</span>
-                       {item.title}
-                     </span>
-                     <div className="flex items-center gap-3">
-                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-24 bg-white/80 backdrop-blur-sm px-2 py-1 rounded-lg border border-gray-200 shadow-sm">
-                          <button onClick={() => { setEditingId(item._id); setEditForm({ title: item.title, price: item.price, isVeg: item.isVeg !== false }); }} className="text-blue-500 hover:bg-blue-50 p-1.5 rounded-md transition-colors"><FiEdit2 className="w-4 h-4" /></button>
-                          <div className="w-px h-4 bg-gray-200 mx-1"></div>
-                          <button onClick={() => handleDeleteItem(item._id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors"><FiTrash2 className="w-4 h-4" /></button>
+                  <div className="flex justify-between items-center p-3">
+                     <div className="flex items-center gap-3 min-w-0">
+                       {item.image ? (
+                         <img src={item.image} alt={item.title} className="w-10 h-10 rounded-lg object-cover border border-gray-200 shrink-0" onError={(e) => { e.target.src = '/image.png'; }} />
+                       ) : (
+                         <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-sm shrink-0">
+                           🍲
+                         </div>
+                       )}
+                       <div className="min-w-0">
+                         <span className="font-bold text-gray-800 flex items-center gap-1.5 text-sm truncate">
+                           <span>{item.isVeg !== false ? '🟢' : '🔴'}</span>
+                           {item.title}
+                         </span>
+                         {item.tag && <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{item.tag}</span>}
                        </div>
-                       <span className="font-black text-emerald-600 bg-emerald-50 ring-1 ring-emerald-200 px-3 py-1 rounded-lg z-10">₹{item.price}</span>
+                     </div>
+                     <div className="flex items-center gap-3 shrink-0">
+                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-24 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg border border-gray-200 shadow-sm">
+                          <button onClick={() => { setEditingId(item._id); setEditForm({ title: item.title, price: item.price, image: item.image || '', isVeg: item.isVeg !== false }); }} className="text-blue-500 hover:bg-blue-50 p-1.5 rounded-md transition-colors cursor-pointer"><FiEdit2 className="w-4 h-4" /></button>
+                          <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                          <button onClick={() => handleDeleteItem(item._id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors cursor-pointer"><FiTrash2 className="w-4 h-4" /></button>
+                       </div>
+                       <span className="font-black text-emerald-600 bg-emerald-50 ring-1 ring-emerald-200 px-3 py-1 rounded-lg z-10 text-sm">₹{item.price}</span>
                      </div>
                   </div>
                )}
@@ -632,11 +780,12 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
             animate={{ opacity: 1, height: 'auto' }} 
             exit={{ opacity: 0, height: 0 }}
             onSubmit={handlePublish}
-            className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl flex flex-col gap-3 overflow-hidden"
+            className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl flex flex-col gap-3 overflow-hidden text-left"
           >
-             <input type="text" placeholder="Dish Name (e.g. Rajma Chawal)" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none" value={form.title} onChange={e => setForm({...form, title: e.target.value})} autoFocus />
+             <input type="text" placeholder="Dish Name (e.g. Rajma Chawal, Brownie, Biryani)" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none text-sm bg-white" value={form.title} onChange={e => setForm({...form, title: e.target.value})} autoFocus />
+             
              <div className="flex gap-2">
-                <input type="number" placeholder="Price (₹)" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none" value={form.price} onChange={e => setForm({...form, price: e.target.value})} />
+                <input type="number" placeholder="Price (₹)" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none text-sm bg-white" value={form.price} onChange={e => setForm({...form, price: e.target.value})} />
                 <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none bg-white text-sm" value={form.tag} onChange={e => setForm({...form, tag: e.target.value})}>
                    <option value="New">New</option>
                    <option value="Bestseller">Bestseller</option>
@@ -644,6 +793,17 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
                    <option value="Sweet">Sweet</option>
                 </select>
              </div>
+
+             <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                   <FiImage className="text-secondary" /> Food Photo (Upload, Paste, or Link):
+                </label>
+                <ImageUploadBox 
+                   value={form.image} 
+                   onChange={(img) => setForm({...form, image: img})} 
+                />
+             </div>
+
              <div className="flex gap-4 items-center px-1">
                 <span className="text-xs font-bold text-gray-500">Type:</span>
                 <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-gray-600">
@@ -653,8 +813,9 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
                    <input type="radio" checked={form.isVeg === false} onChange={() => setForm({...form, isVeg: false})} className="text-red-500 focus:ring-red-500" /> Non-Veg 🔴
                 </label>
              </div>
+
              <div className="flex gap-2 mt-1">
-                <button type="button" onClick={() => setIsAdding(false)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-lg font-bold text-sm">Cancel</button>
+                <button type="button" onClick={() => setIsAdding(false)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-lg font-bold text-sm cursor-pointer">Cancel</button>
                 <button type="submit" className="flex-1 bg-secondary hover:bg-secondary-hover text-white py-2 rounded-lg shadow-md font-bold text-sm cursor-pointer shadow-secondary/10">Publish</button>
              </div>
           </motion.form>
