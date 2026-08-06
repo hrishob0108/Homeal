@@ -9,6 +9,7 @@ const mealSchema = new mongoose.Schema(
     tag: { type: String, default: "New" }, // e.g., "Bestseller", "New"
     isVeg: { type: Boolean, default: true },
     cookName: { type: String, required: true }, // Denormalized for fast reads
+    collegeName: { type: String, default: "" }, // Scoped to dayscholar's college
     rating: { type: Number, default: 4.8 }, // Static default for aesthetic
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
