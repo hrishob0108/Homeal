@@ -5,7 +5,20 @@ const Meal = require("../models/Meal");
 // @access  Public
 const getMeals = async (req, res) => {
   try {
-    const meals = await Meal.find().sort({ createdAt: -1 });
+    const college = req.query.collegeName || (req.user && req.user.collegeName);
+    let filter = {};
+
+    if (college) {
+      filter = {
+        $or: [
+          { collegeName: college },
+          { collegeName: "" },
+          { collegeName: { $exists: false } }
+        ]
+      };
+    }
+
+    const meals = await Meal.find(filter).sort({ createdAt: -1 });
     res.status(200).json(meals);
   } catch (err) {
     res.status(500).json({ message: "Error fetching meals", error: err.message });
@@ -31,6 +44,7 @@ const createMeal = async (req, res) => {
       tag,
       isVeg: isVeg !== undefined ? isVeg : true,
       cookName: req.user.name,
+      collegeName: req.user.collegeName || "",
       createdBy: req.user._id,
     });
 

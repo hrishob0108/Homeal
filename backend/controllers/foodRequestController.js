@@ -23,6 +23,7 @@ const createFoodRequest = async (req, res) => {
       description,
       price,
       deliveryLocation,
+      collegeName: (req.user.collegeName || "").trim(),
       neededBy,
       status: "Pending"
     });
@@ -45,7 +46,21 @@ const createFoodRequest = async (req, res) => {
 // @access  Private
 const getPendingFoodRequests = async (req, res) => {
   try {
-    const pendingRequests = await FoodRequest.find({ status: "Pending" }).sort({ createdAt: -1 });
+    const userCollege = req.user && req.user.collegeName ? req.user.collegeName.trim() : "";
+    let filter = { status: "Pending" };
+    if (userCollege) {
+      const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter = {
+        status: "Pending",
+        $or: [
+          { collegeName: { $regex: new RegExp("^" + escapeRegex(userCollege) + "$", "i") } },
+          { collegeName: "" },
+          { collegeName: { $exists: false } }
+        ]
+      };
+    }
+
+    const pendingRequests = await FoodRequest.find(filter).sort({ createdAt: -1 });
     res.status(200).json(pendingRequests);
   } catch (err) {
     res.status(500).json({ message: "Error fetching pending requests", error: err.message });

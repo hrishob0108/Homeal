@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const sendSmsOtp = require("../utils/sendSmsService");
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "30d" });
@@ -35,6 +36,11 @@ exports.registerUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        phone: user.phone || "",
+        isPhoneVerified: user.isPhoneVerified || false,
+        state: user.state || "",
+        district: user.district || "",
+        collegeName: user.collegeName || "",
         token: generateToken(user._id),
       });
     } else {
@@ -65,6 +71,11 @@ exports.loginUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        phone: user.phone || "",
+        isPhoneVerified: user.isPhoneVerified || false,
+        state: user.state || "",
+        district: user.district || "",
+        collegeName: user.collegeName || "",
         token: generateToken(user._id),
       });
     } else {
@@ -117,10 +128,125 @@ exports.googleAuth = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      phone: user.phone || "",
+      isPhoneVerified: user.isPhoneVerified || false,
+      state: user.state || "",
+      district: user.district || "",
+      collegeName: user.collegeName || "",
       token: generateToken(user._id),
     });
   } catch (error) {
     console.error("Google Auth Error:", error.message);
     res.status(500).json({ message: "Server error during Google Auth." });
   }
+};
+
+// @desc    Update user college & onboarding profile
+// @route   PUT /api/auth/college
+// @access  Private
+exports.updateCollegeProfile = async (req, res) => {
+  const { state, district, collegeName, phone, isPhoneVerified } = req.body;
+
+  if (!state || !district || !collegeName) {
+    return res.status(400).json({ message: "State, district, and college name are required." });
+  }
+
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.state = state.trim();
+    user.district = district.trim();
+    user.collegeName = collegeName.trim();
+    if (phone) user.phone = phone.trim();
+    if (isPhoneVerified !== undefined) user.isPhoneVerified = isPhoneVerified;
+    await user.save();
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      isPhoneVerified: user.isPhoneVerified,
+      state: user.state,
+      district: user.district,
+      collegeName: user.collegeName,
+      token: generateToken(user._id),
+    });
+  } catch (error) {
+    console.error("Update College Profile Error:", error.message);
+    res.status(500).json({ message: "Server error updating college profile." });
+  }
+};
+
+// In-memory mobile phone OTP store
+const phoneOtpStore = {};
+
+// @desc    Send Phone OTP via Mobile SMS
+// @route   POST /api/auth/send-phone-otp
+// @access  Public
+exports.sendPhoneOtp = async (req, res) => {
+  const { phone } = req.body;
+  const cleanPhone = phone ? String(phone).replace(/\D/g, "") : "";
+
+  if (!cleanPhone || cleanPhone.length < 10) {
+    return res.status(400).json({ message: "Please provide a valid 10-digit mobile phone number." });
+  }
+
+  try {
+    // Generate a 6-digit dynamic numeric OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    phoneOtpStore[cleanPhone] = {
+      otp,
+      expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes validity
+    };
+
+    // Dispatch real SMS via SMS gateway / logger
+    const smsResult = await sendSmsOtp(cleanPhone, otp);
+
+    res.json({
+      success: true,
+      message: `SMS OTP sent successfully to +91 ${cleanPhone}.`,
+      provider: smsResult?.provider || "ConsoleLogger",
+      isRealSms: Boolean(process.env.FAST2SMS_API_KEY || process.env.TWILIO_ACCOUNT_SID)
+    });
+  } catch (error) {
+    console.error("Send Phone OTP Error:", error.message);
+    res.status(500).json({ message: "Failed to send Mobile SMS OTP. Please try again." });
+  }
+};
+
+// @desc    Verify Mobile Phone OTP
+// @route   POST /api/auth/verify-phone-otp
+// @access  Public
+exports.verifyPhoneOtp = async (req, res) => {
+  const { phone, otp } = req.body;
+  const cleanPhone = phone ? String(phone).replace(/\D/g, "") : "";
+  const inputOtp = otp ? String(otp).trim() : "";
+
+  if (!cleanPhone || !inputOtp) {
+    return res.status(400).json({ message: "Mobile number and OTP code are required." });
+  }
+
+  const record = phoneOtpStore[cleanPhone];
+
+  // Validate exact 6-digit OTP code against store
+  if (record && record.otp === inputOtp && record.expiresAt > Date.now()) {
+    delete phoneOtpStore[cleanPhone]; // Clear OTP after successful verification
+    return res.json({
+      success: true,
+      message: "Mobile phone number verified successfully!"
+    });
+  }
+
+  if (record && record.expiresAt <= Date.now()) {
+    delete phoneOtpStore[cleanPhone];
+    return res.status(400).json({ message: "OTP code has expired. Please request a new Mobile SMS code." });
+  }
+
+  res.status(400).json({ message: "Invalid Mobile OTP code. Please enter the correct 6-digit code received on your phone." });
 };

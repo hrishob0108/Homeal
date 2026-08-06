@@ -71,7 +71,7 @@ const RequestFoodModal = ({ isOpen, onClose, onRequestCreated }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
           {/* Overlay */}
           <motion.div
             variants={overlayVariants}
@@ -79,7 +79,7 @@ const RequestFoodModal = ({ isOpen, onClose, onRequestCreated }) => {
             animate="visible"
             exit="exit"
             onClick={onClose}
-            className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/75 backdrop-blur-md"
           />
 
           {/* Modal Container */}
@@ -88,11 +88,8 @@ const RequestFoodModal = ({ isOpen, onClose, onRequestCreated }) => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="bg-white/95 backdrop-blur-2xl w-full max-w-lg rounded-[2rem] shadow-[0_24px_60px_rgba(0,0,0,0.15)] border border-white/60 p-8 sm:p-10 relative overflow-hidden font-sans z-10"
+            className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-[0_25px_70px_rgba(0,0,0,0.35)] border border-gray-100 p-8 sm:p-10 relative overflow-hidden font-sans z-10"
           >
-            {/* Decorative background blobs */}
-            <div className="absolute top-[-20%] right-[-20%] w-48 h-48 bg-emerald-100/50 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-[-20%] left-[-20%] w-48 h-48 bg-orange-100/50 rounded-full blur-3xl pointer-events-none" />
 
             {/* Header */}
             <div className="flex justify-between items-center mb-6 relative z-10">

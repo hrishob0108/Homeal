@@ -1,5 +1,5 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -11,9 +11,38 @@ import HostelerDashboard from './pages/Dashboard/HostelerDashboard';
 import AllMeals from './pages/AllMeals';
 import SelectRole from './pages/SelectRole';
 import TrackOrders from './pages/TrackOrders';
+import CollegeOnboardingModal from './components/CollegeOnboardingModal';
 import { Toaster } from 'react-hot-toast';
 
 const App = () => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const location = useLocation();
+
+  const syncUser = () => {
+    try {
+      const stored = sessionStorage.getItem("user") || sessionStorage.getItem("currentUser");
+      if (stored) {
+        setCurrentUser(JSON.parse(stored));
+      } else {
+        setCurrentUser(null);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    syncUser();
+  }, [location.pathname]);
+
+  const handleCollegeSelected = (updatedUser) => {
+    setCurrentUser(updatedUser);
+  };
+
+  // Determine if onboarding modal should be shown
+  const isAuthPage = ['/home', '/login', '/register', '/forgot-password', '/reset-password', '/'].includes(location.pathname);
+  const needsCollegeOnboarding = currentUser && (!currentUser.collegeName || !currentUser.collegeName.trim() || !currentUser.isPhoneVerified) && !isAuthPage;
+
   return (
     <>
       <Toaster 
@@ -24,6 +53,15 @@ const App = () => {
           error: { iconTheme: { primary: '#EF4444', secondary: '#fff' } }
         }} 
       />
+
+      {/* Mandatory Post-Login College Onboarding Modal */}
+      {needsCollegeOnboarding && (
+        <CollegeOnboardingModal 
+          user={currentUser} 
+          onCollegeSelected={handleCollegeSelected} 
+        />
+      )}
+
       <Routes>
       <Route path="/" element={<Navigate to="/home" />} />
       <Route path="/home" element={<Home />} />

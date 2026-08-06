@@ -61,7 +61,7 @@ const ReviewModal = ({ isOpen, onClose, order, onReviewSubmitted }) => {
   return (
     <AnimatePresence>
       {isOpen && order && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
           {/* Overlay */}
           <motion.div
             variants={overlayVariants}
@@ -69,7 +69,7 @@ const ReviewModal = ({ isOpen, onClose, order, onReviewSubmitted }) => {
             animate="visible"
             exit="exit"
             onClick={onClose}
-            className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/75 backdrop-blur-md"
           />
 
           {/* Modal */}
@@ -78,7 +78,7 @@ const ReviewModal = ({ isOpen, onClose, order, onReviewSubmitted }) => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="bg-white/95 backdrop-blur-2xl w-full max-w-md rounded-[2rem] shadow-[0_24px_60px_rgba(0,0,0,0.15)] border border-white/60 p-8 sm:p-10 relative overflow-hidden font-sans z-10"
+            className="bg-white w-full max-w-md rounded-[2.5rem] shadow-[0_25px_70px_rgba(0,0,0,0.35)] border border-gray-100 p-8 sm:p-10 relative overflow-hidden font-sans z-10"
           >
             {/* Header */}
             <div className="flex justify-between items-center mb-6">

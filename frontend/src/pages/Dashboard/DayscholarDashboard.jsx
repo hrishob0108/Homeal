@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FiBell, FiCheckCircle, FiStar, FiMapPin, FiClock, FiTruck, FiZap, FiMenu, FiSmile, FiLogOut, FiEdit2, FiTrash2, FiX, FiImage, FiLink, FiUpload
+  FiBell, FiCheckCircle, FiStar, FiMapPin, FiClock, FiTruck, FiZap, FiMenu, FiSmile, FiLogOut, FiEdit2, FiTrash2, FiX, FiImage, FiLink, FiUpload, FiArrowRight
 } from 'react-icons/fi';
 import { FaRupeeSign, FaFire } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
@@ -131,7 +131,7 @@ const DayscholarDashboard = () => {
       const resOrders = await api.get('/orders/requests');
       setRequests(resOrders.data);
       const resMeals = await api.get('/meals');
-      setMyMenu(resMeals.data.filter(m => m.createdBy === user._id));
+      setMyMenu(resMeals.data.filter(m => (typeof m.createdBy === 'object' ? (m.createdBy._id || m.createdBy.id) : m.createdBy) === user._id));
       const resPendingRequests = await api.get('/food-requests/pending');
       setCustomRequests(resPendingRequests.data);
       const statsRes = await api.get(`/reviews/seller/${user._id}/stats`);
@@ -234,6 +234,7 @@ const DayscholarDashboard = () => {
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
               <NewFoodRequests requests={newRequests} onUpdateStatus={handleUpdateStatus} />
+              <CustomFoodRequestsFeed requests={customRequests} onAccept={handleAcceptRequest} />
               <ActiveDeliveries deliveries={activeDeliveries} wid={wid} localUploads={localUploads} onUpdateStatus={handleUpdateStatus} onUploadProof={handleUploadProof} activeOrderIdRef={activeOrderIdRef} otpInputs={otpInputs} setOtpInputs={setOtpInputs} />
               <CustomFoodRequestsFeed requests={customRequests} onAccept={handleAcceptRequest} />
             </div>
@@ -250,6 +251,8 @@ const DayscholarDashboard = () => {
 };
 
 const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, setIsNotifOpen }) => {
+  if (!user || !user.token || !user.collegeName || !user.collegeName.trim() || !user.isPhoneVerified) return null;
+
   const handleLogout = () => {
     sessionStorage.removeItem('currentUser');
     toast.success("Logged out successfully");
@@ -311,9 +314,9 @@ const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, 
              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-secondary to-secondary-hover flex items-center justify-center text-white font-black text-lg shadow-md uppercase">
                 {user?.name?.[0] || 'D'}
              </div>
-             <div className="hidden sm:block flex-col text-left">
-                <p className="font-bold text-espresso text-sm leading-tight">{user?.name || 'Dayscholar'}</p>
-                <p className="text-xs text-secondary font-semibold">Dayscholar</p>
+             <div className="hidden sm:block flex-col text-left max-w-[160px]">
+                <p className="font-bold text-espresso text-sm leading-tight truncate">{user?.name || 'Dayscholar'}</p>
+                <p className="text-xs text-secondary font-semibold truncate">{user?.collegeName || 'Dayscholar'}</p>
              </div>
           </div>
           <motion.button onClick={handleLogout} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-10 h-10 flex flex-shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-500 transition-colors cursor-pointer">
@@ -391,44 +394,60 @@ const NewFoodRequests = ({ requests, onUpdateStatus }) => (
 );
 
 const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUploadProof, activeOrderIdRef, otpInputs, setOtpInputs }) => (
-  <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgba(60,34,34,0.04)] border border-white/50">
+  <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-6 sm:p-8 rounded-[2rem] shadow-[0_8px_30px_rgba(60,34,34,0.04)] border border-white/50">
     <h3 className="text-2xl font-serif font-black text-espresso flex items-center gap-3 mb-6">
-      <div className="p-2 bg-secondary/10 rounded-lg text-secondary"><FiTruck /></div> Active Deliveries
+      <div className="p-2 bg-[#8C3F3F]/10 rounded-xl text-[#8C3F3F]"><FiTruck /></div> Active Deliveries
     </h3>
-    <div className="space-y-4 text-left">
-      {deliveries.length === 0 ? <p className="text-espresso-light/60 font-medium">You have no active deliveries.</p> :
-      deliveries.map((delivery) => (
-        <div key={delivery._id} className="border border-gray-100 bg-gray-50/50 p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-          <div className="flex-1 w-full relative">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-secondary"></span></span>
-              <p className="font-black text-xl text-espresso">{delivery.dishName}</p>
-            </div>
-            <p className="text-sm font-medium text-espresso-light mb-1">Delivering to <span className="font-bold text-espresso">{delivery.buyerName}</span> @ {delivery.deliveryLocation}</p>
-            <p className="font-black text-primary text-lg">₹{delivery.price}</p>
+    <div className="space-y-5 text-left">
+      {deliveries.length === 0 ? (
+        <p className="text-espresso-light/60 font-medium">You have no active deliveries.</p>
+      ) : (
+        deliveries.map((delivery) => (
+          <div key={delivery._id} className="border border-gray-100 bg-white p-5 sm:p-6 rounded-2xl shadow-sm hover:border-[#8C3F3F]/30 transition-all flex flex-col gap-4">
+            
+            {/* Header: Title + Price + Status Badge */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-3">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8C3F3F] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#8C3F3F]"></span>
+                </span>
+                <h4 className="font-black text-xl text-espresso">{delivery.dishName}</h4>
+                <span className="text-lg font-black text-[#8C3F3F] bg-[#8C3F3F]/10 px-3 py-1 rounded-xl border border-[#8C3F3F]/20">₹{delivery.price}</span>
+              </div>
 
-            {/* Escrow & Dual-Photo Flow */}
-            <div className="mt-6 flex flex-col items-start gap-4">
-               
+              <span className="inline-block px-3.5 py-1.5 font-extrabold text-xs uppercase tracking-wider rounded-xl text-amber-700 bg-amber-50 border border-amber-200/80 shadow-xs">
+                {delivery.status}
+              </span>
+            </div>
+
+            {/* Delivery Details */}
+            <div className="text-sm font-medium text-espresso-light flex items-center gap-2">
+              <FiMapPin className="text-[#8C3F3F] shrink-0" />
+              <span>Delivering to <strong className="text-espresso">{delivery.buyerName}</strong> @ {delivery.deliveryLocation}</span>
+            </div>
+
+            {/* Step Action Buttons */}
+            <div className="pt-2 flex flex-col items-start gap-4">
                {/* Step 1: Accepted -> Preparing (Cooking Proof) */}
                {delivery.status === 'Accepted' && (
                  <>
                    {!delivery.cookingProofImageUrl && !localUploads[`${delivery._id}_cooking`] && (
                      <motion.button
                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                       className="bg-white border border-gray-200 hover:border-indigo-300 text-indigo-600 font-bold px-6 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-2 group w-full sm:w-auto overflow-hidden whitespace-nowrap cursor-pointer"
+                       className="bg-[#8C3F3F]/10 hover:bg-[#8C3F3F] border border-[#8C3F3F]/30 text-[#8C3F3F] hover:text-white font-bold px-5 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-2 text-sm cursor-pointer whitespace-nowrap"
                        onClick={() => {
                          activeOrderIdRef.current = { id: delivery._id, type: 'cooking' };
                          wid.current?.open();
                        }}
                      >
-                       <FiZap className="text-indigo-400 group-hover:text-amber-400 transition-colors" /> 1. Upload Cooking Proof
+                       <FiZap className="text-amber-500" /> 1. Upload Cooking Proof
                      </motion.button>
                    )}
                    {localUploads[`${delivery._id}_cooking`] && (
                      <div className="w-full sm:w-64">
-                       <img src={localUploads[`${delivery._id}_cooking`]} alt="Cooking" className="w-full h-40 object-cover rounded-xl border-2 border-indigo-200 mb-2" />
-                       <button onClick={() => onUploadProof(delivery._id, 'cooking')} className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-black py-2 rounded-xl shadow-md cursor-pointer">
+                       <img src={localUploads[`${delivery._id}_cooking`]} alt="Cooking" className="w-full h-40 object-cover rounded-xl border-2 border-[#8C3F3F]/30 mb-2" />
+                       <button onClick={() => onUploadProof(delivery._id, 'cooking')} className="w-full bg-[#8C3F3F] hover:bg-[#A34B4B] text-white font-bold py-2.5 rounded-xl shadow-md cursor-pointer text-sm">
                           Start Preparing
                        </button>
                      </div>
@@ -438,18 +457,18 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
 
                {/* Step 2: Preparing -> Out for Delivery */}
                {delivery.status === 'Preparing' && (
-                   <motion.button onClick={() => onUpdateStatus(delivery._id, 'Out for Delivery')} whileHover={{scale:1.02}} className="bg-secondary hover:bg-secondary-hover text-white font-bold px-6 py-2.5 rounded-xl cursor-pointer shadow-md shadow-secondary/15 transition-all">Mark Out For Delivery 🚀</motion.button>
+                   <motion.button onClick={() => onUpdateStatus(delivery._id, 'Out for Delivery')} whileHover={{scale:1.02}} className="bg-[#8C3F3F] hover:bg-[#A34B4B] text-white font-bold px-6 py-2.5 rounded-xl cursor-pointer shadow-md text-sm transition-all">Mark Out For Delivery 🚀</motion.button>
                )}
 
                {/* Step 3: Out for Delivery -> Delivered (OTP + Handover Proof) */}
                {delivery.status === 'Out for Delivery' && (
-                 <div className="bg-white border-2 border-green-100 p-4 rounded-xl w-full max-w-sm">
-                   <p className="font-bold text-gray-700 mb-3 text-sm">Final Step: Handover & OTP Verification</p>
+                 <div className="bg-amber-50/50 border border-amber-200/80 p-4 rounded-xl w-full max-w-sm">
+                   <p className="font-bold text-gray-800 mb-3 text-sm">Final Step: Handover & OTP Verification</p>
                    <input 
                      type="text" 
                      placeholder="Enter 4-Digit OTP" 
                      maxLength={4}
-                     className="w-full text-center tracking-[1em] font-mono text-2xl font-black bg-gray-50 border-2 border-gray-200 rounded-lg p-3 mb-3 focus:outline-none focus:border-green-400 focus:bg-green-50"
+                     className="w-full text-center tracking-[1em] font-mono text-2xl font-black bg-white border-2 border-amber-200 rounded-lg p-3 mb-3 focus:outline-none focus:border-[#8C3F3F]"
                      value={otpInputs[delivery._id] || ''}
                      onChange={(e) => setOtpInputs(prev => ({...prev, [delivery._id]: e.target.value.replace(/\D/g,'')}))}
                    />
@@ -457,18 +476,18 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
                    {!localUploads[`${delivery._id}_handover`] ? (
                      <motion.button
                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                       className="bg-green-50 border border-green-200 hover:border-green-300 text-green-700 font-bold px-4 py-2.5 rounded-lg shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 group w-full cursor-pointer"
+                       className="bg-[#8C3F3F] hover:bg-[#A34B4B] text-white font-bold px-4 py-2.5 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 w-full cursor-pointer text-sm"
                        onClick={() => {
                          activeOrderIdRef.current = { id: delivery._id, type: 'handover' };
                          wid.current?.open();
                        }}
                      >
-                       <FiZap className="text-green-500" /> Upload Handover Proof
+                       <FiZap className="text-amber-300" /> Upload Handover Proof
                      </motion.button>
                    ) : (
                      <div className="w-full">
-                       <img src={localUploads[`${delivery._id}_handover`]} alt="Handover" className="w-full h-32 object-cover rounded-lg border-2 border-green-200 mb-2" />
-                       <button onClick={() => onUploadProof(delivery._id, 'handover', otpInputs[delivery._id])} className="w-full bg-green-500 hover:bg-green-600 text-white font-black py-2.5 rounded-lg shadow-md cursor-pointer flex items-center justify-center gap-2">
+                       <img src={localUploads[`${delivery._id}_handover`]} alt="Handover" className="w-full h-32 object-cover rounded-lg border-2 border-[#8C3F3F]/30 mb-2" />
+                       <button onClick={() => onUploadProof(delivery._id, 'handover', otpInputs[delivery._id])} className="w-full bg-[#8C3F3F] hover:bg-[#A34B4B] text-white font-bold py-2.5 rounded-lg shadow-md cursor-pointer flex items-center justify-center gap-2 text-sm">
                           <FiCheckCircle /> Complete Delivery
                        </button>
                      </div>
@@ -477,15 +496,8 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
                )}
             </div>
           </div>
-          
-          <div className="text-left lg:text-right w-full lg:w-auto bg-white p-4 lg:p-0 rounded-xl lg:bg-transparent border lg:border-none border-gray-100 mt-4 lg:mt-0">
-            <span className="inline-block px-3 py-1 font-black text-xs uppercase tracking-widest rounded-lg text-amber-600 bg-amber-100 mb-4 ring-1 ring-amber-200">
-              {delivery.status}
-            </span><br/>
-            {delivery.status === 'Out for Delivery' && !delivery.proofImageUrl && <p className="text-xs font-semibold text-gray-400 mt-2 lg:text-right">*Submit proof to finish</p>}
-          </div>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   </motion.div>
 );
@@ -496,9 +508,10 @@ const QuickActions = () => (
       <div className="p-2 bg-purple-100 rounded-lg text-purple-600"><FiZap /></div> Quick Actions
     </h3>
     <div className="space-y-3">
-      <motion.button whileHover={{ scale: 1.02 }} className="w-full text-left p-4 font-bold text-gray-700 bg-white border border-gray-200 rounded-xl hover:border-indigo-300 hover:text-indigo-600 transition-all cursor-pointer">
-        📈 View Analytics & Earnings
-      </motion.button>
+      <button onClick={() => toast("Analytics feature coming soon!")} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-between hover:bg-gray-100 transition-colors font-bold text-sm text-gray-700 cursor-pointer">
+        <span className="flex items-center gap-2">📈 View Analytics & Earnings</span>
+        <FiArrowRight />
+      </button>
     </div>
   </motion.div>
 );
