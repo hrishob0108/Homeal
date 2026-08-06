@@ -4,32 +4,59 @@ const Order = require("../models/Order");
 // @route   POST /api/orders
 // @access  Private
 const createOrder = async (req, res) => {
-  const { sellerId, mealId, dishName, price, deliveryLocation, neededBy } = req.body;
+  let { sellerId, cookId, mealId, dishName, price, deliveryLocation, neededBy } = req.body;
 
   if (req.user.role !== "hosteler") {
     return res.status(403).json({ message: "Only hostelers can create orders." });
   }
 
   try {
+    let finalSellerId = sellerId || cookId;
+    let finalDishName = dishName;
+    let finalPrice = price;
+
+    if (mealId) {
+      const Meal = require("../models/Meal");
+      const mealObj = await Meal.findById(mealId);
+      if (mealObj) {
+        if (!finalSellerId) finalSellerId = mealObj.createdBy;
+        if (!finalDishName) finalDishName = mealObj.title;
+        if (finalPrice === undefined || finalPrice === null) finalPrice = mealObj.price;
+      }
+    }
+
+    if (finalSellerId && typeof finalSellerId === "object") {
+      finalSellerId = finalSellerId._id || finalSellerId.id;
+    }
+
+    if (!finalSellerId) {
+      return res.status(400).json({ message: "Seller ID could not be identified for this order." });
+    }
+
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
 
     const order = new Order({
       buyerId: req.user._id,
       buyerName: req.user.name,
-      sellerId,
-      mealId,
-      dishName,
-      price,
-      deliveryLocation,
-      neededBy,
+      sellerId: finalSellerId,
+      mealId: mealId || null,
+      dishName: finalDishName || "Home-Cooked Meal",
+      price: finalPrice || 0,
+      deliveryLocation: deliveryLocation || "Hostel Room Delivery",
+      neededBy: neededBy || "Asap",
       status: "Pending",
       otp: otp
     });
 
     const savedOrder = await order.save();
-    req.io.to(sellerId).emit('new_order_request', savedOrder);
+
+    if (req.io) {
+      req.io.to(finalSellerId.toString()).emit("new_order_request", savedOrder);
+    }
+
     res.status(201).json(savedOrder);
   } catch (err) {
+    console.error("Create Order Error:", err);
     res.status(500).json({ message: "Error creating order", error: err.message });
   }
 };

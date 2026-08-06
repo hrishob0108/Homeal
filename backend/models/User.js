@@ -25,6 +25,22 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  isPhoneVerified: {
+    type: Boolean,
+    default: false
+  },
+  state: {
+    type: String,
+    default: ""
+  },
+  district: {
+    type: String,
+    default: ""
+  },
+  collegeName: {
+    type: String,
+    default: ""
+  },
 }, { timestamps: true });
 
 // Match user entered password to hashed password in database

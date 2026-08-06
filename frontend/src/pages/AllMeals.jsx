@@ -65,9 +65,15 @@ const AllMeals = () => {
 
   const submitOrder = async (notes, orderQuantity) => {
     try {
+      const targetSellerId = typeof selectedMealForOrder.createdBy === 'object' 
+        ? (selectedMealForOrder.createdBy._id || selectedMealForOrder.createdBy.id) 
+        : selectedMealForOrder.createdBy;
+
       await api.post('/orders', {
         mealId: selectedMealForOrder._id,
-        cookId: selectedMealForOrder.createdBy,
+        sellerId: targetSellerId,
+        dishName: selectedMealForOrder.title,
+        price: selectedMealForOrder.price,
         quantity: orderQuantity,
         notes: notes
       });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiHome, FiUser, FiShoppingCart, FiSearch, FiClock, FiPackage, FiStar, FiLogOut, FiTrendingUp, FiMapPin, FiArrowRight, FiX, FiBell, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
+import { FaGraduationCap } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -149,12 +150,13 @@ const HostelerDashboard = () => {
 
   const handleOrderMeal = async (meal) => {
     try {
+      const targetSellerId = typeof meal.createdBy === 'object' ? (meal.createdBy._id || meal.createdBy.id) : meal.createdBy;
       const payload = {
-        sellerId: meal.createdBy, // We set this in the Meal schema
+        sellerId: targetSellerId,
         mealId: meal._id,
         dishName: meal.title,
         price: meal.price,
-        deliveryLocation: "Awaiting Input...", // In v2, prompt user for room #
+        deliveryLocation: "Room Delivery",
         neededBy: "Asap" 
       };
 
@@ -166,7 +168,8 @@ const HostelerDashboard = () => {
         toast.error("Failed to place order.");
       }
     } catch (err) {
-      toast.error("Network error placing order.");
+      console.error(err);
+      toast.error(err.response?.data?.message || "Network error placing order.");
     }
   };
 
@@ -253,6 +256,8 @@ const HostelerDashboard = () => {
 
 // Sub-components
 const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, setIsNotifOpen, searchQuery, setSearchQuery }) => {
+  if (!user || !user.token || !user.collegeName || !user.collegeName.trim() || !user.isPhoneVerified) return null;
+
   const handleLogout = () => {
     sessionStorage.removeItem('currentUser');
     toast.success("Successfully logged out");
@@ -295,10 +300,10 @@ const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, 
         {/* Right: Actions */}
         <div className="flex items-center space-x-6 shrink-0 z-10">
           
-          {/* Hosteler Badge */}
-          <div className="hidden md:flex items-center gap-2.5 px-6 py-2.5 rounded-[999px] border border-[#E8D9CF] bg-white text-[#8C3F3F] hover:bg-[#FFF8F2] transition-colors shadow-sm cursor-pointer">
-             <FiHome className="w-4 h-4 stroke-[2]" />
-             <span className="text-[14px] font-semibold">Hosteler</span>
+          {/* Hosteler & College Badge */}
+          <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-[999px] border border-[#E8D9CF] bg-white text-[#8C3F3F] hover:bg-[#FFF8F2] transition-colors shadow-sm cursor-pointer max-w-[220px]">
+             <FaGraduationCap className="w-4 h-4 text-[#8C3F3F] shrink-0" />
+             <span className="text-[13px] font-bold truncate">{user?.collegeName || "Hosteler"}</span>
           </div>
 
           {/* Notification Bell */}
