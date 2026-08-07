@@ -112,7 +112,7 @@ const AllMeals = () => {
             >
               <FiArrowLeft className="w-5 h-5" /> Back to Dashboard
             </button>
-            <h1 className="text-2xl font-serif font-black text-[#8C3F3F] tracking-wider hidden sm:block">Homeal</h1>
+            <h1 className="text-2xl font-serif font-black text-[#8C3F3F] tracking-wider hidden sm:block">Craavyo</h1>
             <div className="w-[120px]"></div> {/* Spacer for balance */}
           </div>
         </motion.header>

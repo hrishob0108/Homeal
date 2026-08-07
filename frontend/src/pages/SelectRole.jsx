@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FiHome, FiBriefcase } from "react-icons/fi";
+import { FiHome, FiBriefcase, FiLoader } from "react-icons/fi";
 import api from "../services/api";
 
 const containerVariants = {
@@ -19,6 +19,7 @@ const SelectRole = () => {
   const googleUserString = sessionStorage.getItem("googleUser");
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
+  const [loadingRole, setLoadingRole] = useState(null);
 
   useEffect(() => {
     if (!googleUserString) {
@@ -39,6 +40,7 @@ const SelectRole = () => {
       return;
     }
 
+    setLoadingRole(role);
     try {
       const response = await api.post("/auth/google", { 
         name: googleUser.name, 
@@ -57,6 +59,8 @@ const SelectRole = () => {
     } catch(err) {
        console.error("Network Error", err);
        setPhoneError("Something went wrong. Please try again.");
+    } finally {
+       setLoadingRole(null);
     }
   };
 
@@ -90,7 +94,7 @@ const SelectRole = () => {
          </motion.div>
         
         <motion.p variants={itemVariants} className="text-espresso-light font-medium text-lg mb-8 max-w-md mx-auto leading-relaxed">
-          Tell us how you plan on using Cravyo today so we can set up your personalized dashboard.
+          Tell us how you plan on using Craavyo today so we can set up your personalized dashboard.
         </motion.p>
 
         {/* Phone number input block */}
@@ -115,29 +119,43 @@ const SelectRole = () => {
         </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <motion.div variants={itemVariants} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+          <motion.div variants={itemVariants} whileHover={{ scale: loadingRole ? 1 : 1.03 }} whileTap={{ scale: loadingRole ? 1 : 0.98 }}>
             <button
               onClick={() => handleRoleSelection("hosteler")}
-              className="w-full text-left bg-white hover:bg-sage/20 border-2 border-primary/10 hover:border-primary p-8 rounded-3xl shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group cursor-pointer"
+              disabled={!!loadingRole}
+              className="w-full text-left bg-white hover:bg-sage/20 disabled:opacity-60 disabled:cursor-not-allowed border-2 border-primary/10 hover:border-primary p-8 rounded-3xl shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group cursor-pointer"
             >
               <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                 <FiHome className="text-primary text-3xl" />
+                 {loadingRole === "hosteler" ? (
+                   <FiLoader className="text-primary text-3xl animate-spin" />
+                 ) : (
+                   <FiHome className="text-primary text-3xl" />
+                 )}
               </div>
               <h3 className="text-2xl font-serif font-black text-espresso mb-2">Hosteler</h3>
-              <p className="text-espresso-light font-medium leading-relaxed">I want to order delicious home-cooked meals.</p>
+              <p className="text-espresso-light font-medium leading-relaxed">
+                {loadingRole === "hosteler" ? "Setting up Hosteler profile..." : "I want to order delicious home-cooked meals."}
+              </p>
             </button>
           </motion.div>
 
-          <motion.div variants={itemVariants} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+          <motion.div variants={itemVariants} whileHover={{ scale: loadingRole ? 1 : 1.03 }} whileTap={{ scale: loadingRole ? 1 : 0.98 }}>
             <button
               onClick={() => handleRoleSelection("dayscholar")}
-              className="w-full text-left bg-white hover:bg-secondary/5 border-2 border-secondary/10 hover:border-secondary p-8 rounded-3xl shadow-sm hover:shadow-xl hover:shadow-secondary/5 transition-all duration-300 group cursor-pointer"
+              disabled={!!loadingRole}
+              className="w-full text-left bg-white hover:bg-secondary/5 disabled:opacity-60 disabled:cursor-not-allowed border-2 border-secondary/10 hover:border-secondary p-8 rounded-3xl shadow-sm hover:shadow-xl hover:shadow-secondary/5 transition-all duration-300 group cursor-pointer"
             >
               <div className="w-16 h-16 bg-secondary/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                 <FiBriefcase className="text-secondary text-3xl" />
+                 {loadingRole === "dayscholar" ? (
+                   <FiLoader className="text-secondary text-3xl animate-spin" />
+                 ) : (
+                   <FiBriefcase className="text-secondary text-3xl" />
+                 )}
               </div>
               <h3 className="text-2xl font-serif font-black text-espresso mb-2">Dayscholar</h3>
-              <p className="text-espresso-light font-medium leading-relaxed">I want to sell my home-cooked meals on campus.</p>
+              <p className="text-espresso-light font-medium leading-relaxed">
+                {loadingRole === "dayscholar" ? "Setting up Dayscholar profile..." : "I want to sell my home-cooked meals on campus."}
+              </p>
             </button>
           </motion.div>
         </div>
