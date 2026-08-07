@@ -45,7 +45,7 @@ const sendSmsOtp = async (phone, otp) => {
       const client = require("twilio")(accountSid, authToken);
 
       await client.messages.create({
-        body: `Your Cravyo verification OTP code is ${otp}. Valid for 5 minutes.`,
+        body: `Your Craavyo verification OTP code is ${otp}. Valid for 5 minutes.`,
         from: process.env.TWILIO_PHONE_NUMBER,
         to: `+91${cleanPhone}`,
       });

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiMail, FiArrowRight, FiCheckCircle, FiChevronLeft } from "react-icons/fi";
+import { FiMail, FiArrowRight, FiCheckCircle, FiChevronLeft, FiLoader } from "react-icons/fi";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -17,8 +17,9 @@ const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -28,8 +29,11 @@ const ForgotPassword = () => {
       setError("Enter a valid email address");
     } else {
       setError("");
-      setSubmitted(true);
-      console.log("Send reset link API call will go here");
+      setIsLoading(true);
+      setTimeout(() => {
+        setIsLoading(false);
+        setSubmitted(true);
+      }, 700);
     }
   };
 
@@ -102,12 +106,23 @@ const ForgotPassword = () => {
               </div>
 
               <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: isLoading ? 1 : 1.02, y: isLoading ? 0 : -2 }}
+                whileTap={{ scale: isLoading ? 1 : 0.98 }}
                 type="submit"
-                className="w-full bg-primary hover:bg-primary-hover py-4 rounded-2xl text-white font-black text-lg shadow-[0_12px_24px_rgba(168,68,68,0.15)] hover:shadow-[0_12px_24px_rgba(168,68,68,0.25)] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+                disabled={isLoading}
+                className="w-full bg-primary hover:bg-primary-hover disabled:opacity-75 disabled:cursor-not-allowed py-4 rounded-2xl text-white font-black text-lg shadow-[0_12px_24px_rgba(168,68,68,0.15)] hover:shadow-[0_12px_24px_rgba(168,68,68,0.25)] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
               >
-                Send Reset Link <FiArrowRight />
+                {isLoading ? (
+                  <>
+                    <FiLoader className="w-5 h-5 animate-spin text-white" />
+                    <span>Sending Reset Link...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Send Reset Link</span>
+                    <FiArrowRight />
+                  </>
+                )}
               </motion.button>
             </motion.form>
           )}

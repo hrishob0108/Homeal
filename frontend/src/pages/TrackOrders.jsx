@@ -102,7 +102,7 @@ const TrackOrders = () => {
           <div className="flex justify-between items-center mb-2">
             <div className="text-left">
               <h2 className="text-3xl font-serif font-black text-espresso tracking-tight">Live Tracking Feed</h2>
-              <p className="text-espresso-light font-semibold text-sm">Monitor all your concurrent cravings in real-time.</p>
+              <p className="text-espresso-light font-semibold text-sm">Monitor all your concurrent craavings in real-time.</p>
             </div>
             <div className="bg-primary/10 text-primary px-3.5 py-1.5 rounded-full text-xs font-black tracking-wide flex items-center gap-1.5 shadow-sm border border-primary/20">
               <FiActivity className="w-4 h-4 animate-pulse stroke-[3]" /> LIVE UPDATING

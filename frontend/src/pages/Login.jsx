@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowLeft } from "react-icons/fi";
+import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowLeft, FiLoader } from "react-icons/fi";
 import GOO from "../firebase";
 import api from "../services/api";
 
@@ -10,6 +10,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const validate = () => {
@@ -25,6 +26,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (validate()) {
+      setIsLoading(true);
       try {
         const response = await api.post("/auth/login", { email, password });
         const data = response.data;
@@ -38,6 +40,8 @@ const Login = () => {
       } catch (error) {
         console.error("Login Error:", error);
         setErrors({ api: error.response?.data?.message || "Something went wrong. Please try again." });
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -189,12 +193,20 @@ const Login = () => {
           {/* Submit Action Button */}
           <div className="pt-2">
             <motion.button
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
+              whileHover={{ scale: isLoading ? 1 : 1.01 }}
+              whileTap={{ scale: isLoading ? 1 : 0.99 }}
               type="submit"
-              className="w-full bg-[#4F2023] hover:bg-[#3F1A1C] text-white font-bold py-3 rounded-[14px] shadow-md transition-all duration-300 cursor-pointer text-sm"
+              disabled={isLoading}
+              className="w-full bg-[#4F2023] hover:bg-[#3F1A1C] disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3 rounded-[14px] shadow-md transition-all duration-300 cursor-pointer text-sm flex items-center justify-center gap-2"
             >
-              Log In
+              {isLoading ? (
+                <>
+                  <FiLoader className="w-4 h-4 animate-spin text-white" />
+                  <span>Logging In...</span>
+                </>
+              ) : (
+                <span>Log In</span>
+              )}
             </motion.button>
           </div>
         </form>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiHome, FiUser, FiShoppingCart, FiSearch, FiClock, FiPackage, FiStar, FiLogOut, FiTrendingUp, FiMapPin, FiArrowRight, FiX, FiBell, FiChevronRight, FiChevronLeft, FiAlertTriangle, FiRepeat } from 'react-icons/fi';
+import { FiHome, FiUser, FiShoppingCart, FiSearch, FiClock, FiPackage, FiStar, FiLogOut, FiTrendingUp, FiMapPin, FiArrowRight, FiX, FiBell, FiChevronRight, FiChevronLeft, FiAlertTriangle, FiRepeat, FiLoader } from 'react-icons/fi';
 import { FaUtensils, FaHeart, FaStar, FaGraduationCap } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -35,6 +35,7 @@ const HostelerDashboard = () => {
   const [selectedTag, setSelectedTag] = useState("All");
   const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [orderingMealId, setOrderingMealId] = useState(null);
   
   const user = JSON.parse(sessionStorage.getItem('currentUser'));
 
@@ -150,11 +151,13 @@ const HostelerDashboard = () => {
   };
 
   const handleOrderMeal = async (meal) => {
+    const mealId = meal._id || meal.id;
+    setOrderingMealId(mealId);
     try {
       const targetSellerId = typeof meal.createdBy === 'object' ? (meal.createdBy._id || meal.createdBy.id) : meal.createdBy;
       const payload = {
         sellerId: targetSellerId,
-        mealId: meal._id,
+        mealId: mealId,
         dishName: meal.title,
         price: meal.price,
         deliveryLocation: "Room Delivery",
@@ -171,6 +174,8 @@ const HostelerDashboard = () => {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Network error placing order.");
+    } finally {
+      setOrderingMealId(null);
     }
   };
 
@@ -213,6 +218,7 @@ const HostelerDashboard = () => {
               meals={filteredMeals} 
               cookStats={cookStats} 
               onOrder={handleOrderMeal} 
+              orderingMealId={orderingMealId}
               selectedTag={selectedTag}
               setSelectedTag={setSelectedTag}
             />
@@ -235,6 +241,7 @@ const HostelerDashboard = () => {
               myReviews={myReviews} 
               onRateOrder={setSelectedOrderForReview} 
               onReorder={handleOrderMeal}
+              orderingMealId={orderingMealId}
             />
           </div>
         </motion.div>
@@ -283,7 +290,7 @@ const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, 
           
           {/* Left: Logo */}
           <Link to="/" className="text-[32px] font-serif font-bold text-[#8C3F3F] tracking-tight shrink-0">
-            Cravyo
+            Craavyo
           </Link>
 
           {/* Middle: Search Bar (Exactly Centered) */}
@@ -388,7 +395,7 @@ const WelcomeBanner = ({ user, onRequestCustom }) => {
            Good Afternoon, {firstName}
          </p>
          <h2 className="text-white font-serif text-[36px] sm:text-[42px] lg:text-[48px] leading-[1.1] mb-5 font-bold tracking-tight">
-           Every craving deserves a <br/> homemade touch.
+           Every craaving deserves a <br/> homemade touch.
          </h2>
          <p className="text-white/90 font-medium text-[15px] md:text-[17px] mb-8">
            Find comforting meals prepared just for you.
@@ -400,12 +407,12 @@ const WelcomeBanner = ({ user, onRequestCustom }) => {
               onClick={onRequestCustom}
               className="bg-white text-black font-semibold px-7 py-3.5 rounded-[999px] text-[16px] transition-all flex items-center gap-2 cursor-pointer shadow-sm"
            >
-              <span className="text-xl leading-none font-bold">+</span> Post a Craving
+              <span className="text-xl leading-none font-bold">+</span> Post a Craaving
            </motion.button>
            <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => document.getElementById('craving-section')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => document.getElementById('craaving-section')?.scrollIntoView({ behavior: 'smooth' })}
               className="bg-transparent border border-white text-white font-semibold px-7 py-3.5 rounded-[999px] text-[16px] hover:bg-white hover:text-[#4D2B2B] transition-all flex items-center gap-2 cursor-pointer"
            >
               Browse menu <FiChevronRight />
@@ -464,15 +471,15 @@ const MyCustomRequests = ({ requests, onCancel }) => (
   </motion.div>
 );
 
-const AvailableToday = ({ meals, cookStats, onOrder, selectedTag, setSelectedTag }) => (
-  <motion.div id="craving-section" variants={itemVariants} className="w-full">
+const AvailableToday = ({ meals, cookStats, onOrder, orderingMealId, selectedTag, setSelectedTag }) => (
+  <motion.div id="craaving-section" variants={itemVariants} className="w-full">
     <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-8">
       <h3 className="text-[48px] font-serif text-[#4D2B2B] flex items-center gap-4 leading-none">
         <span className="bg-[#D0555D] text-white text-[12px] font-bold px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1.5 shadow-sm transform -translate-y-1">
           <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
           Live
         </span>
-        What are you craving?
+        What are you craaving?
       </h3>
       <Link to="/all-meals" className="text-[#8C3F3F] font-bold text-[18px] hover:underline cursor-pointer font-serif transition-colors">See All</Link>
     </div>
@@ -506,7 +513,9 @@ const AvailableToday = ({ meals, cookStats, onOrder, selectedTag, setSelectedTag
     ) : (
       <div className="relative group/carousel">
         <div className="flex gap-[20px] overflow-x-auto pb-12 pt-4 px-2 -mx-2 custom-scrollbar snap-x relative" id="meals-carousel">
-          {meals.map((meal) => (
+          {meals.map((meal) => {
+            const isOrderingThis = orderingMealId === meal._id || orderingMealId === meal.id;
+            return (
           <div key={meal._id} className="min-w-[240px] w-[240px] snap-start bg-[#E7082F]/[0.12] backdrop-blur-md rounded-[15px] shadow-sm border border-[#E7082F]/30 flex flex-col relative text-left group cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-[#E7082F]/50 overflow-hidden">
             
             {/* Image Section */}
@@ -552,14 +561,23 @@ const AvailableToday = ({ meals, cookStats, onOrder, selectedTag, setSelectedTag
                 <span className="font-sans font-bold text-[20px] text-[#8C3F3F]">₹{meal.price}</span>
                 <button 
                   onClick={() => onOrder(meal)}
-                  className="bg-[#8C3F3F] hover:bg-[#6E3030] text-white font-medium text-[13px] px-3.5 py-1.5 rounded-[10px] transition-colors shadow-xs hover:shadow-sm cursor-pointer"
+                  disabled={isOrderingThis}
+                  className="bg-[#8C3F3F] hover:bg-[#6E3030] disabled:opacity-75 disabled:cursor-not-allowed text-white font-medium text-[13px] px-3.5 py-1.5 rounded-[10px] transition-colors shadow-xs hover:shadow-sm flex items-center gap-1.5 cursor-pointer"
                 >
-                  Order +
+                  {isOrderingThis ? (
+                    <>
+                      <FiLoader className="w-3.5 h-3.5 animate-spin" />
+                      <span>Ordering...</span>
+                    </>
+                  ) : (
+                    <span>Order +</span>
+                  )}
                 </button>
               </div>
             </div>
           </div>
-        ))}
+            );
+          })}
         </div>
         
         {/* Carousel Arrows */}
@@ -933,7 +951,7 @@ const ActiveRequestsSection = ({ requests = [], activeOrders = [], onCancel }) =
   );
 };
 
-const PastRequestsSection = ({ orders = [], myReviews = [], onRateOrder, onReorder }) => {
+const PastRequestsSection = ({ orders = [], myReviews = [], onRateOrder, onReorder, orderingMealId }) => {
   let pastList = [];
 
   if (orders.length > 0) {
@@ -981,7 +999,9 @@ const PastRequestsSection = ({ orders = [], myReviews = [], onRateOrder, onReord
         </div>
       ) : (
         <div className="space-y-3.5">
-          {pastList.map((item, idx) => (
+          {pastList.map((item, idx) => {
+            const isReorderingThis = orderingMealId === item.id;
+            return (
             <div 
               key={item.id || idx}
               className="bg-[#FBF0E6] border border-[#EED7C7] rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4"
@@ -1024,14 +1044,26 @@ const PastRequestsSection = ({ orders = [], myReviews = [], onRateOrder, onReord
                 {item.status === 'Delivered' && (
                   <button 
                     onClick={() => onReorder && onReorder(item)}
-                    className="bg-white border border-[#E5A8A8] text-[#9E3F3F] font-semibold text-xs px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-xs hover:bg-[#FFF0F0] cursor-pointer transition-colors"
+                    disabled={isReorderingThis}
+                    className="bg-white border border-[#E5A8A8] disabled:opacity-75 disabled:cursor-not-allowed text-[#9E3F3F] font-semibold text-xs px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-xs hover:bg-[#FFF0F0] cursor-pointer transition-colors"
                   >
-                    <FiRepeat className="w-3 h-3" /> Reorder
+                    {isReorderingThis ? (
+                      <>
+                        <FiLoader className="w-3 h-3 animate-spin" />
+                        <span>Reordering...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FiRepeat className="w-3 h-3" />
+                        <span>Reorder</span>
+                      </>
+                    )}
                   </button>
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </motion.div>
