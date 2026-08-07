@@ -59,11 +59,13 @@ const HostelerDashboard = () => {
     if (!socket) return;
 
     const handleOrderStatusUpdated = (updatedOrder) => {
+      console.log("[HostelerDashboard] Received order_status_updated via socket:", updatedOrder);
       toast.success(`Order status updated to: ${updatedOrder.status}`);
       setNotifications(prev => [
         { id: Date.now(), text: `Order for "${updatedOrder.dishName}" updated to "${updatedOrder.status}"` },
         ...prev
       ]);
+      setMyOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
       fetchDashboardData();
     };
 
@@ -167,6 +169,9 @@ const HostelerDashboard = () => {
       const res = await api.post('/orders', payload);
       if(res.status === 200 || res.status === 201) {
         toast.success(`Successfully requested ${meal.title}!`);
+        if (res.data) {
+          setMyOrders(prev => [res.data, ...prev.filter(o => o._id !== res.data._id)]);
+        }
         fetchDashboardData();
       } else {
         toast.error("Failed to place order.");

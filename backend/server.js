@@ -47,15 +47,18 @@ app.get('/', (req, res) => {
 
 // Socket.io logic
 io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
+  console.log('[Socket.IO] A client connected:', socket.id);
 
   socket.on('join_room', (userId) => {
-    socket.join(userId);
-    console.log(`User ${userId} joined room`);
+    if (userId) {
+      const room = String(userId).trim();
+      socket.join(room);
+      console.log(`[Socket.IO] Socket ${socket.id} joined room: ${room}`);
+    }
   });
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected');
+  socket.on('disconnect', (reason) => {
+    console.log(`[Socket.IO] Socket ${socket.id} disconnected (${reason})`);
   });
 });
 

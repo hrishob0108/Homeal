@@ -51,7 +51,9 @@ const createOrder = async (req, res) => {
     const savedOrder = await order.save();
 
     if (req.io) {
-      req.io.to(finalSellerId.toString()).emit("new_order_request", savedOrder);
+      const targetRoom = String(finalSellerId).trim();
+      console.log(`[OrderController] Emitting new_order_request to seller room: ${targetRoom}`);
+      req.io.to(targetRoom).emit("new_order_request", savedOrder);
     }
 
     res.status(201).json(savedOrder);
@@ -127,7 +129,13 @@ const updateOrderStatus = async (req, res) => {
     if(handoverProofImageUrl) order.handoverProofImageUrl = handoverProofImageUrl;
 
     const updatedOrder = await order.save();
-    req.io.to(order.buyerId.toString()).emit('order_status_updated', updatedOrder);
+    if (req.io) {
+      const buyerRoom = String(order.buyerId).trim();
+      const sellerRoom = String(order.sellerId).trim();
+      console.log(`[OrderController] Emitting order_status_updated to buyer: ${buyerRoom} and seller: ${sellerRoom}`);
+      req.io.to(buyerRoom).emit('order_status_updated', updatedOrder);
+      req.io.to(sellerRoom).emit('order_status_updated', updatedOrder);
+    }
     res.status(200).json(updatedOrder);
   } catch (err) {
     res.status(500).json({ message: "Error updating order", error: err.message });

@@ -76,29 +76,46 @@ const DayscholarDashboard = () => {
     if (!socket) return;
 
     const handleNewOrderRequest = (newOrder) => {
-      toast.success(`New order request: ${newOrder.dishName}!`);
+      console.log("[DayscholarDashboard] Received new_order_request via socket:", newOrder);
+      toast.success(`🎉 New order received: ${newOrder.dishName}!`);
       setNotifications(prev => [
         { id: Date.now(), text: `New order request for "${newOrder.dishName}" from ${newOrder.buyerName}!` },
         ...prev
       ]);
+      // Update state immediately so UI updates in real-time without delay
+      setRequests(prev => {
+        if (prev.some(o => o._id === newOrder._id)) {
+          return prev.map(o => o._id === newOrder._id ? newOrder : o);
+        }
+        return [newOrder, ...prev];
+      });
       fetchDashboardData();
     };
 
     const handleOrderStatusUpdated = (updatedOrder) => {
+      console.log("[DayscholarDashboard] Received order_status_updated via socket:", updatedOrder);
+      setRequests(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
       fetchDashboardData();
     };
 
     const handleNewFoodRequest = (newRequest) => {
+      console.log("[DayscholarDashboard] Received new_food_request via socket:", newRequest);
       toast.success(`New custom food request: ${newRequest.dishName}! 📣`);
-      setCustomRequests(prev => [newRequest, ...prev]);
+      setCustomRequests(prev => {
+        if (prev.some(r => r._id === newRequest._id)) return prev;
+        return [newRequest, ...prev];
+      });
+      fetchDashboardData();
     };
 
     const handleFoodRequestCancelled = ({ id }) => {
       setCustomRequests(prev => prev.filter(r => r._id !== id));
+      fetchDashboardData();
     };
 
     const handleFoodRequestAccepted = ({ id }) => {
       setCustomRequests(prev => prev.filter(r => r._id !== id));
+      fetchDashboardData();
     };
 
     const handleNewReviewReceived = (newReview) => {
