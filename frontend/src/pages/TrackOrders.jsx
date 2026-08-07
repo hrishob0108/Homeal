@@ -42,6 +42,7 @@ const TrackOrders = () => {
 
     const handleOrderStatusUpdated = (updatedOrder) => {
       toast.success(`"${updatedOrder.dishName}" status updated to: ${updatedOrder.status}`);
+      setOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
       fetchActiveOrders();
     };
 
