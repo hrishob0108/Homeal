@@ -45,15 +45,36 @@ app.get('/', (req, res) => {
   res.send('Backend Running');
 });
 
+const { getCollegeRoom } = require('./utils/collegeHelper');
+
 // Socket.io logic
 io.on('connection', (socket) => {
   console.log('[Socket.IO] A client connected:', socket.id);
 
+  // User-specific room for direct order & review events
   socket.on('join_room', (userId) => {
     if (userId) {
       const room = String(userId).trim();
       socket.join(room);
-      console.log(`[Socket.IO] Socket ${socket.id} joined room: ${room}`);
+      console.log(`[Socket.IO] Socket ${socket.id} joined personal room: ${room}`);
+    }
+  });
+
+  // College-specific room for campus-scoped meal feeds & custom food requests
+  socket.on('join_college_room', (collegeName) => {
+    if (collegeName) {
+      const room = getCollegeRoom(collegeName);
+      if (room) {
+        // Leave any prior college rooms the socket might have been in
+        for (const r of socket.rooms) {
+          if (typeof r === 'string' && r.startsWith('college_') && r !== room) {
+            socket.leave(r);
+            console.log(`[Socket.IO] Socket ${socket.id} left old college room: ${r}`);
+          }
+        }
+        socket.join(room);
+        console.log(`[Socket.IO] Socket ${socket.id} joined college room: ${room} ("${collegeName}")`);
+      }
     }
   });
 

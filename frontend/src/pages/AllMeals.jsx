@@ -37,7 +37,10 @@ const AllMeals = () => {
 
   const fetchMeals = async () => {
     try {
-      const resMeals = await api.get('/meals');
+      const userCollege = (user?.collegeName || "").trim();
+      const resMeals = await api.get('/meals', {
+        params: userCollege ? { collegeName: userCollege } : {}
+      });
       setMeals(resMeals.data);
 
       const cookIds = [...new Set(resMeals.data.map(m => m.createdBy))];
@@ -75,6 +78,7 @@ const AllMeals = () => {
         sellerId: targetSellerId,
         dishName: selectedMealForOrder.title,
         price: selectedMealForOrder.price,
+        imageUrl: selectedMealForOrder.image || selectedMealForOrder.imageUrl || '',
         quantity: orderQuantity,
         notes: notes
       });
@@ -122,9 +126,14 @@ const AllMeals = () => {
         <motion.div variants={containerVariants} initial="hidden" animate="visible">
           
           <div className="mb-10 text-center">
-            <h2 className="text-[48px] font-serif text-[#4D2B2B] leading-none mb-6">
+            <h2 className="text-[48px] font-serif text-[#4D2B2B] leading-none mb-3">
               All Available Meals
             </h2>
+            {user?.collegeName && (
+              <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#8C3F3F]/10 text-[#8C3F3F] text-sm font-semibold mb-6 border border-[#8C3F3F]/20 shadow-xs">
+                🎓 Campus: {user.collegeName}
+              </div>
+            )}
             
             {/* Sleek Filter Tags row */}
             <div className="flex flex-wrap justify-center gap-[16px] font-sans">

@@ -146,11 +146,16 @@ const DayscholarDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
+      const userCollege = (user?.collegeName || "").trim();
       const resOrders = await api.get('/orders/requests');
       setRequests(resOrders.data);
-      const resMeals = await api.get('/meals');
+      const resMeals = await api.get('/meals', {
+        params: userCollege ? { collegeName: userCollege } : {}
+      });
       setMyMenu(resMeals.data.filter(m => (typeof m.createdBy === 'object' ? (m.createdBy._id || m.createdBy.id) : m.createdBy) === user._id));
-      const resPendingRequests = await api.get('/food-requests/pending');
+      const resPendingRequests = await api.get('/food-requests/pending', {
+        params: userCollege ? { collegeName: userCollege } : {}
+      });
       setCustomRequests(resPendingRequests.data);
       const statsRes = await api.get(`/reviews/seller/${user._id}/stats`);
       setRatingStats(statsRes.data);
@@ -372,10 +377,17 @@ const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, 
 
 const WelcomeBanner = ({ user }) => (
   <motion.div variants={itemVariants} className="mb-10 text-left">
-    <h2 className="text-4xl lg:text-5xl font-serif font-black text-espresso tracking-tight">
-      Welcome back, <span className="text-secondary">{user?.name?.split(' ')[0]}! 👋</span>
-    </h2>
-    <p className="text-espresso-light text-lg font-medium mt-2">Check out the latest incoming food requests below.</p>
+    <div className="flex flex-wrap items-center gap-3 mb-2">
+      <h2 className="text-4xl lg:text-5xl font-serif font-black text-espresso tracking-tight">
+        Welcome back, <span className="text-secondary">{user?.name?.split(' ')[0]}! 👋</span>
+      </h2>
+      {user?.collegeName && (
+        <span className="bg-secondary/10 text-secondary border border-secondary/20 text-sm font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-xs">
+          🎓 {user.collegeName}
+        </span>
+      )}
+    </div>
+    <p className="text-espresso-light text-lg font-medium">Manage incoming food requests from Hostelers in your college campus.</p>
   </motion.div>
 );
 

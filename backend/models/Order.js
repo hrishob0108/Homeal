@@ -8,6 +8,7 @@ const orderSchema = new mongoose.Schema(
     mealId: { type: mongoose.Schema.Types.ObjectId, ref: "Meal", required: false },
     dishName: { type: String, required: true },
     price: { type: Number, required: true },
+    imageUrl: { type: String, default: "" },
     deliveryLocation: { type: String, required: true },
     neededBy: { type: String, required: true },
     status: {
