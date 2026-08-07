@@ -4,29 +4,43 @@ const Order = require("../models/Order");
 // @route   POST /api/orders
 // @access  Private
 const createOrder = async (req, res) => {
-  let { sellerId, cookId, mealId, dishName, price, deliveryLocation, neededBy } = req.body;
+  let { sellerId, cookId, mealId, dishName, price, imageUrl, deliveryLocation, neededBy } = req.body;
 
   if (req.user.role !== "hosteler") {
     return res.status(403).json({ message: "Only hostelers can create orders." });
   }
 
   try {
+    const Meal = require("../models/Meal");
     let finalSellerId = sellerId || cookId;
     let finalDishName = dishName;
     let finalPrice = price;
+    let finalImageUrl = imageUrl || "";
 
     if (mealId) {
-      const Meal = require("../models/Meal");
       const mealObj = await Meal.findById(mealId);
       if (mealObj) {
         if (!finalSellerId) finalSellerId = mealObj.createdBy;
         if (!finalDishName) finalDishName = mealObj.title;
         if (finalPrice === undefined || finalPrice === null) finalPrice = mealObj.price;
+        if (!finalImageUrl) finalImageUrl = mealObj.image || "";
       }
     }
 
     if (finalSellerId && typeof finalSellerId === "object") {
       finalSellerId = finalSellerId._id || finalSellerId.id;
+    }
+
+    // Fallback: If no imageUrl was found and we have dishName + sellerId, attempt finding matching meal image
+    if (!finalImageUrl && finalDishName && finalSellerId) {
+      const matchingMeal = await Meal.findOne({
+        createdBy: finalSellerId,
+        title: { $regex: new RegExp(`^${finalDishName.trim()}$`, "i") }
+      });
+      if (matchingMeal && matchingMeal.image) {
+        finalImageUrl = matchingMeal.image;
+        if (!mealId) mealId = matchingMeal._id;
+      }
     }
 
     if (!finalSellerId) {
@@ -42,6 +56,7 @@ const createOrder = async (req, res) => {
       mealId: mealId || null,
       dishName: finalDishName || "Home-Cooked Meal",
       price: finalPrice || 0,
+      imageUrl: finalImageUrl,
       deliveryLocation: deliveryLocation || "Hostel Room Delivery",
       neededBy: neededBy || "Asap",
       status: "Pending",
@@ -72,7 +87,9 @@ const getMyOrders = async (req, res) => {
   }
 
   try {
-    const orders = await Order.find({ buyerId: req.user._id }).sort({ createdAt: -1 });
+    const orders = await Order.find({ buyerId: req.user._id })
+      .populate("mealId")
+      .sort({ createdAt: -1 });
     res.status(200).json(orders);
   } catch (err) {
     res.status(500).json({ message: "Error fetching orders", error: err.message });
@@ -88,7 +105,9 @@ const getDayscholarRequests = async (req, res) => {
   }
 
   try {
-    const orders = await Order.find({ sellerId: req.user._id }).sort({ createdAt: -1 });
+    const orders = await Order.find({ sellerId: req.user._id })
+      .populate("mealId")
+      .sort({ createdAt: -1 });
     res.status(200).json(orders);
   } catch (err) {
     res.status(500).json({ message: "Error fetching requests", error: err.message });

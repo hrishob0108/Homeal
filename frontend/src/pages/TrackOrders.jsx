@@ -134,13 +134,23 @@ const TrackOrders = () => {
                     {/* Card Header info */}
                     <div className="text-left">
                       <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-2">
-                            Order #{order._id.substring(order._id.length - 4)}
-                          </span>
-                          <h3 className="text-2xl font-serif font-black text-espresso leading-tight group-hover:text-primary transition-colors">
-                            {order.dishName}
-                          </h3>
+                        <div className="flex items-center gap-3.5">
+                          {(order.imageUrl || (order.mealId && (order.mealId.image || order.mealId.imageUrl))) && (
+                            <img 
+                              src={order.imageUrl || order.mealId?.image || order.mealId?.imageUrl} 
+                              alt={order.dishName} 
+                              className="w-14 h-14 rounded-2xl object-cover border border-primary/15 shrink-0 shadow-xs"
+                              onError={(e) => { e.target.src = '/cravyo_hero_thali.png'; }}
+                            />
+                          )}
+                          <div>
+                            <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-1">
+                              Order #{order._id.substring(order._id.length - 4)}
+                            </span>
+                            <h3 className="text-2xl font-serif font-black text-espresso leading-tight group-hover:text-primary transition-colors">
+                              {order.dishName}
+                            </h3>
+                          </div>
                         </div>
                         <p className="text-2xl font-black text-primary">₹{order.price}</p>
                       </div>

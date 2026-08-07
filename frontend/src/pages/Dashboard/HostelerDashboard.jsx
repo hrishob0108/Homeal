@@ -103,8 +103,12 @@ const HostelerDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch live feed
-      const resMeals = await api.get('/meals');
+      const userCollege = (user?.collegeName || "").trim();
+
+      // Fetch live feed strictly for this college
+      const resMeals = await api.get('/meals', {
+        params: userCollege ? { collegeName: userCollege } : {}
+      });
       setMeals(resMeals.data);
 
       // Fetch personal orders
@@ -153,22 +157,26 @@ const HostelerDashboard = () => {
   };
 
   const handleOrderMeal = async (meal) => {
-    const mealId = meal._id || meal.id;
-    setOrderingMealId(mealId);
+    const mealId = meal._id || meal.mealId || meal.id;
+    const targetSellerId = typeof meal.createdBy === 'object' 
+      ? (meal.createdBy._id || meal.createdBy.id) 
+      : (meal.createdBy || meal.sellerId);
+    
+    setOrderingMealId(mealId || meal._id || meal.id);
     try {
-      const targetSellerId = typeof meal.createdBy === 'object' ? (meal.createdBy._id || meal.createdBy.id) : meal.createdBy;
       const payload = {
         sellerId: targetSellerId,
         mealId: mealId,
-        dishName: meal.title,
+        dishName: meal.title || meal.dishName,
         price: meal.price,
+        imageUrl: meal.image || meal.imageUrl || '',
         deliveryLocation: "Room Delivery",
         neededBy: "Asap" 
       };
 
       const res = await api.post('/orders', payload);
       if(res.status === 200 || res.status === 201) {
-        toast.success(`Successfully requested ${meal.title}!`);
+        toast.success(`Successfully requested ${meal.title || meal.dishName}!`);
         if (res.data) {
           setMyOrders(prev => [res.data, ...prev.filter(o => o._id !== res.data._id)]);
         }
@@ -393,12 +401,19 @@ const WelcomeBanner = ({ user, onRequestCustom }) => {
     <motion.div variants={itemVariants} className="mb-10 w-full relative bg-[linear-gradient(90deg,#C45257_0%,#D63447_46%,#FADBB0_91%)] rounded-[30px] overflow-hidden flex flex-col md:flex-row shadow-xl">
       {/* Text content left */}
       <div className="p-8 md:p-12 lg:px-[64px] lg:py-[48px] flex-1 text-left z-10">
-         <p className="text-white/95 text-sm md:text-[15px] font-medium tracking-wide mb-4 flex items-center gap-2">
-           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-             <path d="M8 0L9.8 6.2L16 8L9.8 9.8L8 16L6.2 9.8L0 8L6.2 6.2L8 0Z" fill="white"/>
-           </svg>
-           Good Afternoon, {firstName}
-         </p>
+         <div className="flex flex-wrap items-center gap-3 mb-4">
+           <p className="text-white/95 text-sm md:text-[15px] font-medium tracking-wide flex items-center gap-2">
+             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+               <path d="M8 0L9.8 6.2L16 8L9.8 9.8L8 16L6.2 9.8L0 8L6.2 6.2L8 0Z" fill="white"/>
+             </svg>
+             Good Afternoon, {firstName}
+           </p>
+           {user?.collegeName && (
+             <span className="bg-black/20 text-white text-xs font-semibold px-3 py-1 rounded-full backdrop-blur-sm border border-white/20 flex items-center gap-1.5 shadow-sm">
+               🎓 {user.collegeName}
+             </span>
+           )}
+         </div>
          <h2 className="text-white font-serif text-[36px] sm:text-[42px] lg:text-[48px] leading-[1.1] mb-5 font-bold tracking-tight">
            Every craaving deserves a <br/> homemade touch.
          </h2>
@@ -749,13 +764,23 @@ const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
               <div className="inline-block bg-[#D2EBD9] text-[#2F7D4E] border border-[#B5DEC0] text-[11px] font-bold px-3 py-0.5 rounded-full mb-2">
                 Arriving Today
               </div>
-              <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-[#EBD8C8] min-w-[220px]">
-                <h4 className="font-serif font-bold text-lg text-[#3A201C] leading-tight">
-                  {activeOrder.dishName}
-                </h4>
-                <p className="text-xs text-[#8A6A62] font-semibold mt-1">
-                  Provider: {activeOrder.sellerName || 'Dayscholar Cook'}
-                </p>
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-[#EBD8C8] min-w-[220px] flex items-center gap-3.5">
+                {(activeOrder.imageUrl || (activeOrder.mealId && (activeOrder.mealId.image || activeOrder.mealId.imageUrl))) && (
+                  <img 
+                    src={activeOrder.imageUrl || activeOrder.mealId?.image || activeOrder.mealId?.imageUrl} 
+                    alt={activeOrder.dishName} 
+                    className="w-12 h-12 rounded-xl object-cover border border-[#EBD8C8] shrink-0"
+                    onError={(e) => { e.target.src = '/cravyo_hero_thali.png'; }}
+                  />
+                )}
+                <div>
+                  <h4 className="font-serif font-bold text-lg text-[#3A201C] leading-tight">
+                    {activeOrder.dishName}
+                  </h4>
+                  <p className="text-xs text-[#8A6A62] font-semibold mt-1">
+                    Provider: {activeOrder.sellerName || 'Dayscholar Cook'}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -862,6 +887,7 @@ const ActiveRequestsSection = ({ requests = [], activeOrders = [], onCancel }) =
   let activeList = [];
 
   activeOrders.forEach((o) => {
+    const mealImg = o.imageUrl || (o.mealId && typeof o.mealId === 'object' ? (o.mealId.image || o.mealId.imageUrl) : null) || o.cookingProofImageUrl || null;
     activeList.push({
       id: o._id,
       dishName: o.dishName,
@@ -869,7 +895,7 @@ const ActiveRequestsSection = ({ requests = [], activeOrders = [], onCancel }) =
       time: o.createdAt ? new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
       eta: o.status === 'Accepted' ? '20 min' : null,
       status: o.status || 'Accepted',
-      image: o.imageUrl || '/cravyo_hero_thali.png'
+      image: mealImg || '/cravyo_hero_thali.png'
     });
   });
   requests.forEach((r) => {
@@ -880,7 +906,7 @@ const ActiveRequestsSection = ({ requests = [], activeOrders = [], onCancel }) =
       time: r.neededBy || 'ASAP',
       eta: null,
       status: 'Pending',
-      image: '/lunchbox.png'
+      image: r.imageUrl || '/lunchbox.png'
     });
   });
 
@@ -962,15 +988,19 @@ const PastRequestsSection = ({ orders = [], myReviews = [], onRateOrder, onReord
   if (orders.length > 0) {
     pastList = orders.map((o) => {
       const review = myReviews.find(r => r.orderId === o._id);
+      const mealImg = o.imageUrl || (o.mealId && typeof o.mealId === 'object' ? (o.mealId.image || o.mealId.imageUrl) : null) || o.handoverProofImageUrl || o.cookingProofImageUrl || null;
       return {
         id: o._id,
+        mealId: o.mealId?._id || o.mealId,
+        sellerId: o.sellerId,
         dishName: o.dishName,
+        title: o.dishName,
         cookName: o.sellerName || 'Dayscholar Chef',
         date: o.createdAt ? new Date(o.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Recent',
         price: o.price,
         rating: review ? `${review.rating}/5` : null,
         status: o.status === 'Declined' ? 'Canceled' : o.status,
-        image: o.imageUrl || '/lunchbox.png'
+        image: mealImg || '/lunchbox.png'
       };
     });
   }

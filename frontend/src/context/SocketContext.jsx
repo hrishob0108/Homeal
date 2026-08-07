@@ -37,6 +37,8 @@ export const SocketProvider = ({ children }) => {
         return () => clearInterval(interval);
     }, [user]);
 
+    const collegeName = user && user.collegeName ? String(user.collegeName).trim() : '';
+
     useEffect(() => {
         const userId = user ? String(user._id || user.id || '').trim() : '';
         if (userId) {
@@ -58,6 +60,11 @@ export const SocketProvider = ({ children }) => {
             const handleJoin = () => {
                 console.log(`[SocketProvider] Emitting join_room for user: ${userId}`);
                 newSocket.emit('join_room', userId);
+
+                if (collegeName) {
+                    console.log(`[SocketProvider] Emitting join_college_room for college: ${collegeName}`);
+                    newSocket.emit('join_college_room', collegeName);
+                }
             };
 
             newSocket.on('connect', handleJoin);
@@ -80,7 +87,7 @@ export const SocketProvider = ({ children }) => {
             }
             setSocket(null);
         }
-    }, [user ? String(user._id || user.id || '').trim() : '']);
+    }, [user ? String(user._id || user.id || '').trim() : '', collegeName]);
 
     return (
         <SocketContext.Provider value={socket}>
