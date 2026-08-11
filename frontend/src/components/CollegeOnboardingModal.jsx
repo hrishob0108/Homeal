@@ -152,12 +152,20 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
         setIsPhoneVerified(true);
         setOtpSent(false);
         setErrorMsg("");
-        toast.success("Phone number verified successfully with Firebase!");
+        toast.success("Phone number verified! Welcome to Cravyo 🎉");
       }
     } catch (fbErr) {
       console.error("Firebase OTP verification error:", fbErr);
-      setErrorMsg(fbErr.message || "Invalid SMS OTP code. Please check your SMS messages.");
-      toast.error("Invalid SMS code. Please try again.");
+      let friendlyMsg = "Aiyoo! 🙈 Wrong OTP! Double check your SMS before your food gets cold!";
+      if (fbErr.code === "auth/code-expired" || fbErr.message?.includes("expired")) {
+        friendlyMsg = "That OTP took a longer nap than a Sunday hostel sleep! 😴 Click Resend OTP!";
+      } else if (fbErr.code === "auth/invalid-verification-code" || fbErr.message?.includes("invalid-verification-code")) {
+        friendlyMsg = "Aiyoo! 🙈 Wrong OTP! Even your hostel mess auntie wouldn't accept that code 🤭 Double check your SMS and try again!";
+      } else if (fbErr.code === "auth/too-many-requests") {
+        friendlyMsg = "Whoa, speedy! 🛑 Too many wrong attempts. Take a breath and try again in a bit!";
+      }
+      setErrorMsg(friendlyMsg);
+      toast.error(friendlyMsg, { duration: 6000 });
     } finally {
       setIsSubmitting(false);
     }
