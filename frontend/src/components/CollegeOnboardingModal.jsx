@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaGraduationCap, FaMapMarkerAlt, FaSearch, FaPhoneAlt, FaShieldAlt } from "react-icons/fa";
-import { FiCheck, FiArrowRight, FiCheckCircle, FiLock, FiSmartphone } from "react-icons/fi";
+import { FiCheck, FiArrowRight, FiCheckCircle, FiLock, FiSmartphone, FiLoader } from "react-icons/fi";
 import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import { auth } from "../firebase";
 import toast from "react-hot-toast";
@@ -25,6 +25,8 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
   // Direct Search state
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -82,7 +84,7 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
     return window.recaptchaVerifier;
   };
 
-  // Handle Send Real Mobile SMS OTP via Firebase Auth API
+  // Handle Send Real Mobile SMS OTP via Firebase Auth API with Backend SMS fallback
   const handleSendOtp = async () => {
     const cleanPhone = phone.replace(/\D/g, "");
     if (cleanPhone.length < 10) {
@@ -90,19 +92,19 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
       return;
     }
     setErrorMsg("");
-    setIsSubmitting(true);
+    setIsSendingOtp(true);
     const formattedPhone = `+91${cleanPhone}`;
 
     try {
       const appVerifier = getRecaptchaVerifier();
 
-      // Dispatch Real Physical SMS via Firebase Phone Auth
+      // Attempt Dispatch via Firebase Phone Auth
       const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
       window.confirmationResult = confirmationResult;
       setOtpSent(true);
-      toast.success(`Real SMS OTP sent via Firebase to ${formattedPhone}! Check your phone.`, { duration: 7000 });
+      toast.success(`SMS OTP sent via Firebase to ${formattedPhone}! Check your phone.`, { duration: 7000 });
     } catch (err) {
-      console.error("Firebase Phone Auth Error:", err);
+      console.warn("Firebase Phone Auth Error, falling back to Backend SMS Service:", err);
       // Reset verifier on error so retry works cleanly
       if (window.recaptchaVerifier) {
         try {
@@ -115,21 +117,25 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
         container.innerHTML = "";
       }
       
-      let msg = err.message || "Failed to send SMS via Firebase.";
-      if (err.code === "auth/operation-not-allowed" || msg.includes("region enabled")) {
-        msg = "Firebase SMS Region Policy: Please allow India (+91) in Firebase Console > Authentication > Settings > SMS region policy.";
-      } else if (err.code === "auth/invalid-app-credential" || msg.includes("invalid-app-credential")) {
-        msg = "Firebase App Credential error: Please add your test phone number (+91 9392984213 -> 123456) in Firebase Console > Authentication > Sign-in method > Phone > Phone numbers for testing.";
+      // Fallback: Dispatch OTP using Backend SMS Service
+      try {
+        const res = await api.post("/auth/send-phone-otp", { phone: cleanPhone });
+        window.confirmationResult = null; // Mark as backend-dispatched
+        setOtpSent(true);
+        setErrorMsg("");
+        toast.success(`OTP generated for +91 ${cleanPhone}! (Check SMS / Backend Console)`, { duration: 8000 });
+      } catch (backendErr) {
+        console.error("Backend OTP Dispatch Error:", backendErr);
+        const msg = backendErr.response?.data?.message || "Failed to send SMS OTP. Please check your network or server.";
+        setErrorMsg(msg);
+        toast.error(msg, { duration: 9000 });
       }
-      
-      setErrorMsg(msg);
-      toast.error(msg, { duration: 9000 });
     } finally {
-      setIsSubmitting(false);
+      setIsSendingOtp(false);
     }
   };
 
-  // Handle Verify Real Mobile SMS OTP via Firebase Auth
+  // Handle Verify Real Mobile SMS OTP via Firebase or Backend Service
   const handleVerifyOtp = async () => {
     const cleanPhone = phone.replace(/\D/g, "");
     if (!otpInput.trim()) {
@@ -137,37 +143,53 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
       return;
     }
 
-    setIsSubmitting(true);
+    setIsVerifyingOtp(true);
     setErrorMsg("");
 
-    if (!window.confirmationResult) {
-      setErrorMsg("No active SMS session. Please click Send OTP first.");
-      setIsSubmitting(false);
-      return;
+    // 1. If Firebase session is active, try Firebase verification
+    if (window.confirmationResult) {
+      try {
+        const result = await window.confirmationResult.confirm(otpInput.trim());
+        if (result && result.user) {
+          setIsPhoneVerified(true);
+          setOtpSent(false);
+          setErrorMsg("");
+          toast.success("Phone number verified successfully with Firebase!");
+          setIsVerifyingOtp(false);
+          return;
+        }
+      } catch (fbErr) {
+        console.warn("Firebase confirmation failed, attempting backend verification:", fbErr);
+      }
     }
 
+    // 2. Fallback / direct verification via Backend OTP endpoint
     try {
-      const result = await window.confirmationResult.confirm(otpInput.trim());
-      if (result && result.user) {
+      const response = await api.post("/auth/verify-phone-otp", {
+        phone: cleanPhone,
+        otp: otpInput.trim()
+      });
+      if (response.data && response.data.success) {
         setIsPhoneVerified(true);
         setOtpSent(false);
         setErrorMsg("");
         toast.success("Phone number verified! Welcome to Cravyo 🎉");
       }
-    } catch (fbErr) {
-      console.error("Firebase OTP verification error:", fbErr);
-      let friendlyMsg = "Aiyoo! 🙈 Wrong OTP! Double check your SMS before your food gets cold!";
-      if (fbErr.code === "auth/code-expired" || fbErr.message?.includes("expired")) {
+    } catch (backendVerifyErr) {
+      console.error("Backend OTP Verification error:", backendVerifyErr);
+      const errCode = backendVerifyErr.response?.data?.code || "";
+      const rawMsg = backendVerifyErr.response?.data?.message || backendVerifyErr.message || "";
+
+      let friendlyMsg = "Aiyoo! 🙈 Wrong OTP! Even your hostel mess auntie wouldn't accept that code 🤭 Double check your SMS and try again!";
+      if (errCode === "auth/code-expired" || rawMsg.includes("expired")) {
         friendlyMsg = "That OTP took a longer nap than a Sunday hostel sleep! 😴 Click Resend OTP!";
-      } else if (fbErr.code === "auth/invalid-verification-code" || fbErr.message?.includes("invalid-verification-code")) {
-        friendlyMsg = "Aiyoo! 🙈 Wrong OTP! Even your hostel mess auntie wouldn't accept that code 🤭 Double check your SMS and try again!";
-      } else if (fbErr.code === "auth/too-many-requests") {
+      } else if (errCode === "auth/too-many-requests") {
         friendlyMsg = "Whoa, speedy! 🛑 Too many wrong attempts. Take a breath and try again in a bit!";
       }
       setErrorMsg(friendlyMsg);
       toast.error(friendlyMsg, { duration: 6000 });
     } finally {
-      setIsSubmitting(false);
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -260,7 +282,7 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
             Complete Student Profile
           </h2>
           <p className="text-[#D3B4B6] text-xs sm:text-sm font-sans">
-            Verify your mobile number and select your college campus to enter Cravyo
+            Verify your mobile number and select your college campus to enter Craavyo
           </p>
         </div>
 
@@ -301,10 +323,17 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
                 <button
                   type="button"
                   onClick={handleSendOtp}
-                  disabled={phone.length < 10}
-                  className="px-4 py-2.5 bg-[#8C3F3F] hover:bg-[#A34B4B] disabled:opacity-50 text-white font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap shadow-md"
+                  disabled={phone.length < 10 || isSendingOtp}
+                  className="px-4 py-2.5 bg-[#8C3F3F] hover:bg-[#A34B4B] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap shadow-md flex items-center justify-center gap-1.5"
                 >
-                  {otpSent ? "Resend OTP" : "Send OTP"}
+                  {isSendingOtp ? (
+                    <>
+                      <FiLoader className="w-3.5 h-3.5 animate-spin text-white" />
+                      <span>Sending OTP...</span>
+                    </>
+                  ) : (
+                    <span>{otpSent ? "Resend OTP" : "Send OTP"}</span>
+                  )}
                 </button>
               </div>
 
@@ -327,9 +356,17 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
                     <button
                       type="button"
                       onClick={handleVerifyOtp}
-                      className="px-5 py-2.5 bg-[#8C3F3F] hover:bg-[#A34B4B] text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md"
+                      disabled={isVerifyingOtp || otpInput.trim().length === 0}
+                      className="px-5 py-2.5 bg-[#8C3F3F] hover:bg-[#A34B4B] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5"
                     >
-                      Verify Code
+                      {isVerifyingOtp ? (
+                        <>
+                          <FiLoader className="w-3.5 h-3.5 animate-spin text-white" />
+                          <span>Verifying...</span>
+                        </>
+                      ) : (
+                        <span>Verify Code</span>
+                      )}
                     </button>
                   </motion.div>
                 </div>
@@ -463,9 +500,19 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
               <button
                 type="submit"
                 disabled={isSubmitting || !selectedCollege || !isPhoneVerified}
-                className="w-full py-3.5 bg-[#8C3F3F] hover:bg-[#A34B4B] disabled:opacity-50 disabled:hover:bg-[#8C3F3F] text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm cursor-pointer"
+                className="w-full py-3.5 bg-[#8C3F3F] hover:bg-[#A34B4B] disabled:opacity-50 disabled:hover:bg-[#8C3F3F] disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm cursor-pointer"
               >
-                {isSubmitting ? "Saving Profile..." : "Confirm & Enter Website"} <FiArrowRight />
+                {isSubmitting ? (
+                  <>
+                    <FiLoader className="w-4 h-4 animate-spin text-white" />
+                    <span>Saving Profile...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Confirm & Enter Website</span>
+                    <FiArrowRight />
+                  </>
+                )}
               </button>
             </div>
           </form>

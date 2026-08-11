@@ -7,6 +7,7 @@ const foodRequestSchema = new mongoose.Schema(
     dishName: { type: String, required: true },
     description: { type: String, default: "" },
     price: { type: Number, required: true },
+    imageUrl: { type: String, default: "" },
     deliveryLocation: { type: String, required: true },
     collegeName: { type: String, default: "" }, // Scoped to hosteler's college
     neededBy: { type: String, required: true },

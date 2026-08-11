@@ -1,5 +1,6 @@
 const FoodRequest = require("../models/FoodRequest");
 const Order = require("../models/Order");
+const { getCollegeRoom, escapeRegex } = require("../utils/collegeHelper");
 
 // @desc    Create a custom food request (Hosteler only)
 // @route   POST /api/food-requests
@@ -9,6 +10,11 @@ const createFoodRequest = async (req, res) => {
 
   if (req.user.role !== "hosteler") {
     return res.status(403).json({ message: "Only hostelers can request food." });
+  }
+
+  const userCollege = (req.user.collegeName || "").trim();
+  if (!userCollege) {
+    return res.status(400).json({ message: "Please complete your college onboarding before posting custom food requests." });
   }
 
   if (!dishName || !price || !deliveryLocation || !neededBy) {
@@ -23,16 +29,20 @@ const createFoodRequest = async (req, res) => {
       description,
       price,
       deliveryLocation,
-      collegeName: (req.user.collegeName || "").trim(),
+      collegeName: userCollege,
       neededBy,
       status: "Pending"
     });
 
     const savedRequest = await foodRequest.save();
 
-    // Broadcast the new request to all connected users (including Dayscholars)
+    // Broadcast the new request strictly to Dayscholars in the same college room
     if (req.io) {
-      req.io.emit("new_food_request", savedRequest);
+      const collegeRoom = getCollegeRoom(userCollege);
+      if (collegeRoom) {
+        console.log(`[FoodRequestController] Emitting new_food_request to college room: ${collegeRoom}`);
+        req.io.to(collegeRoom).emit("new_food_request", savedRequest);
+      }
     }
 
     res.status(201).json(savedRequest);
@@ -41,24 +51,21 @@ const createFoodRequest = async (req, res) => {
   }
 };
 
-// @desc    Get all pending food requests
+// @desc    Get all pending food requests strictly scoped to the dayscholar's college
 // @route   GET /api/food-requests/pending
 // @access  Private
 const getPendingFoodRequests = async (req, res) => {
   try {
-    const userCollege = req.user && req.user.collegeName ? req.user.collegeName.trim() : "";
-    let filter = { status: "Pending" };
-    if (userCollege) {
-      const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      filter = {
-        status: "Pending",
-        $or: [
-          { collegeName: { $regex: new RegExp("^" + escapeRegex(userCollege) + "$", "i") } },
-          { collegeName: "" },
-          { collegeName: { $exists: false } }
-        ]
-      };
+    const userCollege = (req.user && req.user.collegeName ? req.user.collegeName : req.query.collegeName || "").trim();
+
+    if (!userCollege) {
+      return res.status(200).json([]);
     }
+
+    const filter = {
+      status: "Pending",
+      collegeName: { $regex: new RegExp("^" + escapeRegex(userCollege) + "$", "i") }
+    };
 
     const pendingRequests = await FoodRequest.find(filter).sort({ createdAt: -1 });
     res.status(200).json(pendingRequests);
@@ -98,11 +105,15 @@ const cancelFoodRequest = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to cancel this request" });
     }
 
+    const collegeName = request.collegeName;
     await FoodRequest.findByIdAndDelete(req.params.id);
 
-    // Broadcast that request was cancelled/removed
+    // Broadcast that request was cancelled/removed only to that college room
     if (req.io) {
-      req.io.emit("food_request_cancelled", { id: req.params.id });
+      const collegeRoom = getCollegeRoom(collegeName);
+      if (collegeRoom) {
+        req.io.to(collegeRoom).emit("food_request_cancelled", { id: req.params.id });
+      }
     }
 
     res.status(200).json({ message: "Request cancelled successfully" });
@@ -134,6 +145,9 @@ const acceptFoodRequest = async (req, res) => {
     request.status = "Accepted";
     await request.save();
 
+    // Generate delivery OTP for custom order
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
     // Create a corresponding Order
     const order = new Order({
       buyerId: request.buyerId,
@@ -141,19 +155,27 @@ const acceptFoodRequest = async (req, res) => {
       sellerId: req.user._id,
       dishName: request.dishName,
       price: request.price,
+      imageUrl: request.imageUrl || "",
       deliveryLocation: request.deliveryLocation,
       neededBy: request.neededBy,
-      status: "Accepted"
+      status: "Accepted",
+      otp: otp
     });
 
     const savedOrder = await order.save();
 
     if (req.io) {
-      // Broadcast to other Dayscholars to remove it from their custom requests feeds
-      req.io.emit("food_request_accepted", { id: request._id });
+      // Broadcast to other Dayscholars in the same college room to remove it from their custom requests feeds
+      const collegeRoom = getCollegeRoom(request.collegeName);
+      if (collegeRoom) {
+        req.io.to(collegeRoom).emit("food_request_accepted", { id: request._id });
+      }
       
       // Notify the Hosteler (buyer) that their request is accepted and they have a new active order
-      req.io.to(request.buyerId.toString()).emit("order_status_updated", savedOrder);
+      const buyerRoom = String(request.buyerId).trim();
+      const sellerRoom = String(req.user._id).trim();
+      req.io.to(buyerRoom).emit("order_status_updated", savedOrder);
+      req.io.to(sellerRoom).emit("new_order_request", savedOrder);
     }
 
     res.status(200).json({ message: "Request accepted successfully", order: savedOrder });

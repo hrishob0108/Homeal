@@ -42,6 +42,7 @@ const TrackOrders = () => {
 
     const handleOrderStatusUpdated = (updatedOrder) => {
       toast.success(`"${updatedOrder.dishName}" status updated to: ${updatedOrder.status}`);
+      setOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
       fetchActiveOrders();
     };
 
@@ -70,11 +71,7 @@ const TrackOrders = () => {
   const steps = ['Pending', 'Accepted', 'Preparing', 'Out for Delivery', 'Delivered'];
 
   return (
-    <div className="bg-cream min-h-screen font-sans relative overflow-x-hidden text-espresso pb-16 select-none">
-      
-      {/* Decorative background blobs */}
-      <div className="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-primary/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
-      <div className="fixed bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-secondary/15 rounded-full blur-[120px] pointer-events-none z-0"></div>
+    <div className="bg-[#FFF0DD] min-h-screen font-sans relative overflow-x-hidden text-espresso pb-16 select-none">
 
       {/* Header */}
       <header className="fixed top-0 w-full z-50 px-4 sm:px-6 lg:px-12 py-4">
@@ -106,7 +103,7 @@ const TrackOrders = () => {
           <div className="flex justify-between items-center mb-2">
             <div className="text-left">
               <h2 className="text-3xl font-serif font-black text-espresso tracking-tight">Live Tracking Feed</h2>
-              <p className="text-espresso-light font-semibold text-sm">Monitor all your concurrent cravings in real-time.</p>
+              <p className="text-espresso-light font-semibold text-sm">Monitor all your concurrent craavings in real-time.</p>
             </div>
             <div className="bg-primary/10 text-primary px-3.5 py-1.5 rounded-full text-xs font-black tracking-wide flex items-center gap-1.5 shadow-sm border border-primary/20">
               <FiActivity className="w-4 h-4 animate-pulse stroke-[3]" /> LIVE UPDATING
@@ -137,13 +134,23 @@ const TrackOrders = () => {
                     {/* Card Header info */}
                     <div className="text-left">
                       <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-2">
-                            Order #{order._id.substring(order._id.length - 4)}
-                          </span>
-                          <h3 className="text-2xl font-serif font-black text-espresso leading-tight group-hover:text-primary transition-colors">
-                            {order.dishName}
-                          </h3>
+                        <div className="flex items-center gap-3.5">
+                          {(order.imageUrl || (order.mealId && (order.mealId.image || order.mealId.imageUrl))) && (
+                            <img 
+                              src={order.imageUrl || order.mealId?.image || order.mealId?.imageUrl} 
+                              alt={order.dishName} 
+                              className="w-14 h-14 rounded-2xl object-cover border border-primary/15 shrink-0 shadow-xs"
+                              onError={(e) => { e.target.src = '/cravyo_hero_thali.png'; }}
+                            />
+                          )}
+                          <div>
+                            <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-1">
+                              Order #{order._id.substring(order._id.length - 4)}
+                            </span>
+                            <h3 className="text-2xl font-serif font-black text-espresso leading-tight group-hover:text-primary transition-colors">
+                              {order.dishName}
+                            </h3>
+                          </div>
                         </div>
                         <p className="text-2xl font-black text-primary">₹{order.price}</p>
                       </div>

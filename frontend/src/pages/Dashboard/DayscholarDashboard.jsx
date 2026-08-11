@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FiBell, FiCheckCircle, FiStar, FiMapPin, FiClock, FiTruck, FiZap, FiMenu, FiSmile, FiLogOut, FiEdit2, FiTrash2, FiX, FiArrowRight
+  FiBell, FiCheckCircle, FiStar, FiMapPin, FiClock, FiTruck, FiZap, FiMenu, FiSmile, FiLogOut, FiEdit2, FiTrash2, FiX, FiImage, FiLink, FiUpload, FiArrowRight, FiLoader
 } from 'react-icons/fi';
 import { FaRupeeSign, FaFire } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
@@ -34,6 +34,7 @@ const DayscholarDashboard = () => {
   const [reviews, setReviews] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
   
   const user = JSON.parse(sessionStorage.getItem('currentUser'));
   
@@ -53,7 +54,7 @@ const DayscholarDashboard = () => {
     fetchDashboardData();
 
     // Cloudinary setup
-    let myWidget = window.cloudinary.createUploadWidget(
+    let myWidget = window.cloudinary?.createUploadWidget(
       { cloudName: "dfseckyjx", uploadPreset: "qbvu3y5j", sources: ['camera'] },
       (error, result) => {
         if (!error && result && result.event === "success") {
@@ -75,29 +76,46 @@ const DayscholarDashboard = () => {
     if (!socket) return;
 
     const handleNewOrderRequest = (newOrder) => {
-      toast.success(`New order request: ${newOrder.dishName}!`);
+      console.log("[DayscholarDashboard] Received new_order_request via socket:", newOrder);
+      toast.success(`🎉 New order received: ${newOrder.dishName}!`);
       setNotifications(prev => [
         { id: Date.now(), text: `New order request for "${newOrder.dishName}" from ${newOrder.buyerName}!` },
         ...prev
       ]);
+      // Update state immediately so UI updates in real-time without delay
+      setRequests(prev => {
+        if (prev.some(o => o._id === newOrder._id)) {
+          return prev.map(o => o._id === newOrder._id ? newOrder : o);
+        }
+        return [newOrder, ...prev];
+      });
       fetchDashboardData();
     };
 
     const handleOrderStatusUpdated = (updatedOrder) => {
+      console.log("[DayscholarDashboard] Received order_status_updated via socket:", updatedOrder);
+      setRequests(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
       fetchDashboardData();
     };
 
     const handleNewFoodRequest = (newRequest) => {
+      console.log("[DayscholarDashboard] Received new_food_request via socket:", newRequest);
       toast.success(`New custom food request: ${newRequest.dishName}! 📣`);
-      setCustomRequests(prev => [newRequest, ...prev]);
+      setCustomRequests(prev => {
+        if (prev.some(r => r._id === newRequest._id)) return prev;
+        return [newRequest, ...prev];
+      });
+      fetchDashboardData();
     };
 
     const handleFoodRequestCancelled = ({ id }) => {
       setCustomRequests(prev => prev.filter(r => r._id !== id));
+      fetchDashboardData();
     };
 
     const handleFoodRequestAccepted = ({ id }) => {
       setCustomRequests(prev => prev.filter(r => r._id !== id));
+      fetchDashboardData();
     };
 
     const handleNewReviewReceived = (newReview) => {
@@ -128,11 +146,16 @@ const DayscholarDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
+      const userCollege = (user?.collegeName || "").trim();
       const resOrders = await api.get('/orders/requests');
       setRequests(resOrders.data);
-      const resMeals = await api.get('/meals');
+      const resMeals = await api.get('/meals', {
+        params: userCollege ? { collegeName: userCollege } : {}
+      });
       setMyMenu(resMeals.data.filter(m => (typeof m.createdBy === 'object' ? (m.createdBy._id || m.createdBy.id) : m.createdBy) === user._id));
-      const resPendingRequests = await api.get('/food-requests/pending');
+      const resPendingRequests = await api.get('/food-requests/pending', {
+        params: userCollege ? { collegeName: userCollege } : {}
+      });
       setCustomRequests(resPendingRequests.data);
       const statsRes = await api.get(`/reviews/seller/${user._id}/stats`);
       setRatingStats(statsRes.data);
@@ -145,6 +168,7 @@ const DayscholarDashboard = () => {
   };
 
   const handleAcceptRequest = async (requestId) => {
+    setActionLoadingId(`accept_${requestId}`);
     try {
       const res = await api.put(`/food-requests/${requestId}/accept`);
       if (res.status === 200) {
@@ -154,10 +178,13 @@ const DayscholarDashboard = () => {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to accept request.");
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
   const handleUpdateStatus = async (orderId, newStatus) => {
+    setActionLoadingId(`status_${orderId}_${newStatus}`);
     try {
       const payload = { status: newStatus };
       const res = await api.put(`/orders/${orderId}/status`, payload);
@@ -169,10 +196,13 @@ const DayscholarDashboard = () => {
       }
     } catch (err) {
       toast.error(err.message);
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
   const handleUploadProof = async (orderId, type, otp = "") => {
+    setActionLoadingId(`proof_${orderId}_${type}`);
     try {
       const localUrl = localUploads[`${orderId}_${type}`];
       if (!localUrl) {
@@ -206,6 +236,8 @@ const DayscholarDashboard = () => {
       }
     } catch (err) {
       toast.error(err.response?.data?.message || err.message);
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -222,9 +254,7 @@ const DayscholarDashboard = () => {
   ];
 
   return (
-    <div className="bg-cream min-h-screen font-sans relative overflow-x-hidden text-espresso pb-12">
-      <div className="fixed top-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-secondary/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
-      <div className="fixed bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-primary/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
+    <div className="bg-[#FFF0DD] min-h-screen font-sans relative overflow-x-hidden text-espresso pb-12">
 
       <Header user={user} navigate={navigate} notifications={notifications} setNotifications={setNotifications} isNotifOpen={isNotifOpen} setIsNotifOpen={setIsNotifOpen} />
 
@@ -235,9 +265,27 @@ const DayscholarDashboard = () => {
           
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              <NewFoodRequests requests={newRequests} onUpdateStatus={handleUpdateStatus} />
-              <CustomFoodRequestsFeed requests={customRequests} onAccept={handleAcceptRequest} />
-              <ActiveDeliveries deliveries={activeDeliveries} wid={wid} localUploads={localUploads} onUpdateStatus={handleUpdateStatus} onUploadProof={handleUploadProof} activeOrderIdRef={activeOrderIdRef} otpInputs={otpInputs} setOtpInputs={setOtpInputs} />
+              <NewFoodRequests 
+                requests={newRequests} 
+                onUpdateStatus={handleUpdateStatus} 
+                actionLoadingId={actionLoadingId}
+              />
+              <CustomFoodRequestsFeed 
+                requests={customRequests} 
+                onAccept={handleAcceptRequest} 
+                actionLoadingId={actionLoadingId}
+              />
+              <ActiveDeliveries 
+                deliveries={activeDeliveries} 
+                wid={wid} 
+                localUploads={localUploads} 
+                onUpdateStatus={handleUpdateStatus} 
+                onUploadProof={handleUploadProof} 
+                activeOrderIdRef={activeOrderIdRef} 
+                otpInputs={otpInputs} 
+                setOtpInputs={setOtpInputs} 
+                actionLoadingId={actionLoadingId}
+              />
             </div>
             <div className="space-y-8">
               <QuickActions />
@@ -252,8 +300,6 @@ const DayscholarDashboard = () => {
 };
 
 const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, setIsNotifOpen }) => {
-  if (!user || !user.token || !user.collegeName || !user.collegeName.trim() || !user.isPhoneVerified) return null;
-
   const handleLogout = () => {
     sessionStorage.removeItem('currentUser');
     toast.success("Logged out successfully");
@@ -267,7 +313,7 @@ const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, 
     >
       <div className="max-w-7xl mx-auto bg-white/80 backdrop-blur-xl border border-secondary/15 shadow-sm rounded-2xl flex justify-between items-center px-6 py-3">
         <Link to="/" className="text-2xl font-serif font-black text-espresso tracking-tight flex items-center gap-2">
-          🍱 Cravyo <span className="hidden sm:inline-block text-espresso/45 font-medium text-lg ml-2 border-l border-secondary/35 pl-4">Dayscholar Hub</span>
+          🍱 Craavyo <span className="hidden sm:inline-block text-espresso/45 font-medium text-lg ml-2 border-l border-secondary/35 pl-4">Dayscholar Hub</span>
         </Link>
         <div className="flex items-center space-x-4 sm:space-x-6">
           <div className="relative">
@@ -331,10 +377,17 @@ const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, 
 
 const WelcomeBanner = ({ user }) => (
   <motion.div variants={itemVariants} className="mb-10 text-left">
-    <h2 className="text-4xl lg:text-5xl font-serif font-black text-espresso tracking-tight">
-      Welcome back, <span className="text-secondary">{user?.name?.split(' ')[0]}! 👋</span>
-    </h2>
-    <p className="text-espresso-light text-lg font-medium mt-2">Check out the latest incoming food requests below.</p>
+    <div className="flex flex-wrap items-center gap-3 mb-2">
+      <h2 className="text-4xl lg:text-5xl font-serif font-black text-espresso tracking-tight">
+        Welcome back, <span className="text-secondary">{user?.name?.split(' ')[0]}! 👋</span>
+      </h2>
+      {user?.collegeName && (
+        <span className="bg-secondary/10 text-secondary border border-secondary/20 text-sm font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-xs">
+          🎓 {user.collegeName}
+        </span>
+      )}
+    </div>
+    <p className="text-espresso-light text-lg font-medium">Manage incoming food requests from Hostelers in your college campus.</p>
   </motion.div>
 );
 
@@ -360,7 +413,7 @@ const StatsGrid = ({ stats }) => (
   </div>
 );
 
-const NewFoodRequests = ({ requests, onUpdateStatus }) => (
+const NewFoodRequests = ({ requests, onUpdateStatus, actionLoadingId }) => (
   <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgba(60,34,34,0.04)] border border-white/50">
     <div className="flex justify-between items-center mb-6">
       <h3 className="text-2xl font-serif font-black text-espresso flex items-center gap-3">
@@ -370,7 +423,12 @@ const NewFoodRequests = ({ requests, onUpdateStatus }) => (
     </div>
     <div className="space-y-4">
       {requests.length === 0 ? <p className="text-espresso-light/60 font-medium text-left">No new requests right now. Hang tight!</p> :
-      requests.map((req) => (
+      requests.map((req) => {
+        const isAccepting = actionLoadingId === `status_${req._id}_Accepted`;
+        const isDeclining = actionLoadingId === `status_${req._id}_Declined`;
+        const isActionRunning = isAccepting || isDeclining;
+
+        return (
         <motion.div key={req._id} whileHover={{ scale: 1.01 }} className="border border-gray-100 p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 bg-white hover:border-secondary transition-colors shadow-sm group text-left">
           <div className="flex-1">
             <p className="font-black text-xl text-espresso mb-2">{req.dishName}</p>
@@ -385,16 +443,47 @@ const NewFoodRequests = ({ requests, onUpdateStatus }) => (
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <span className="text-xl font-black text-primary bg-primary/10 px-4 py-2 rounded-xl ring-1 ring-primary/20 mr-2">₹{req.price}</span>
-            <motion.button onClick={() => onUpdateStatus(req._id, 'Accepted')} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1 sm:flex-initial px-5 py-2.5 font-black text-white bg-gradient-to-r from-secondary to-secondary-hover rounded-xl shadow-lg shadow-secondary/20 cursor-pointer">Accept</motion.button>
-            <motion.button onClick={() => onUpdateStatus(req._id, 'Declined')} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1 sm:flex-initial px-5 py-2.5 font-bold text-gray-600 bg-gray-100 hover:bg-red-50 hover:text-red-500 rounded-xl cursor-pointer">Decline</motion.button>
+            <motion.button 
+              onClick={() => onUpdateStatus(req._id, 'Accepted')} 
+              disabled={isActionRunning}
+              whileHover={!isActionRunning ? { scale: 1.05 } : {}} 
+              whileTap={!isActionRunning ? { scale: 0.95 } : {}} 
+              className="flex-1 sm:flex-initial px-5 py-2.5 font-black text-white bg-gradient-to-r from-secondary to-secondary-hover rounded-xl shadow-lg shadow-secondary/20 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+            >
+              {isAccepting ? (
+                <>
+                  <FiLoader className="w-4 h-4 animate-spin" />
+                  <span>Accepting...</span>
+                </>
+              ) : (
+                <span>Accept</span>
+              )}
+            </motion.button>
+            <motion.button 
+              onClick={() => onUpdateStatus(req._id, 'Declined')} 
+              disabled={isActionRunning}
+              whileHover={!isActionRunning ? { scale: 1.05 } : {}} 
+              whileTap={!isActionRunning ? { scale: 0.95 } : {}} 
+              className="flex-1 sm:flex-initial px-5 py-2.5 font-bold text-gray-600 bg-gray-100 hover:bg-red-50 hover:text-red-500 rounded-xl cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+            >
+              {isDeclining ? (
+                <>
+                  <FiLoader className="w-4 h-4 animate-spin" />
+                  <span>Declining...</span>
+                </>
+              ) : (
+                <span>Decline</span>
+              )}
+            </motion.button>
           </div>
         </motion.div>
-      ))}
+        );
+      })}
     </div>
   </motion.div>
 );
 
-const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUploadProof, activeOrderIdRef, otpInputs, setOtpInputs }) => (
+const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUploadProof, activeOrderIdRef, otpInputs, setOtpInputs, actionLoadingId }) => (
   <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-6 sm:p-8 rounded-[2rem] shadow-[0_8px_30px_rgba(60,34,34,0.04)] border border-white/50">
     <h3 className="text-2xl font-serif font-black text-espresso flex items-center gap-3 mb-6">
       <div className="p-2 bg-[#8C3F3F]/10 rounded-xl text-[#8C3F3F]"><FiTruck /></div> Active Deliveries
@@ -403,7 +492,12 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
       {deliveries.length === 0 ? (
         <p className="text-espresso-light/60 font-medium">You have no active deliveries.</p>
       ) : (
-        deliveries.map((delivery) => (
+        deliveries.map((delivery) => {
+          const isCookingProofLoading = actionLoadingId === `proof_${delivery._id}_cooking`;
+          const isOutForDeliveryLoading = actionLoadingId === `status_${delivery._id}_Out for Delivery`;
+          const isHandoverProofLoading = actionLoadingId === `proof_${delivery._id}_handover`;
+
+          return (
           <div key={delivery._id} className="border border-gray-100 bg-white p-5 sm:p-6 rounded-2xl shadow-sm hover:border-[#8C3F3F]/30 transition-all flex flex-col gap-4">
             
             {/* Header: Title + Price + Status Badge */}
@@ -439,7 +533,7 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
                        className="bg-[#8C3F3F]/10 hover:bg-[#8C3F3F] border border-[#8C3F3F]/30 text-[#8C3F3F] hover:text-white font-bold px-5 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-2 text-sm cursor-pointer whitespace-nowrap"
                        onClick={() => {
                          activeOrderIdRef.current = { id: delivery._id, type: 'cooking' };
-                         wid.current.open();
+                         wid.current?.open();
                        }}
                      >
                        <FiZap className="text-amber-500" /> 1. Upload Cooking Proof
@@ -448,8 +542,19 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
                    {localUploads[`${delivery._id}_cooking`] && (
                      <div className="w-full sm:w-64">
                        <img src={localUploads[`${delivery._id}_cooking`]} alt="Cooking" className="w-full h-40 object-cover rounded-xl border-2 border-[#8C3F3F]/30 mb-2" />
-                       <button onClick={() => onUploadProof(delivery._id, 'cooking')} className="w-full bg-[#8C3F3F] hover:bg-[#A34B4B] text-white font-bold py-2.5 rounded-xl shadow-md cursor-pointer text-sm">
-                          Start Preparing
+                       <button 
+                         onClick={() => onUploadProof(delivery._id, 'cooking')} 
+                         disabled={isCookingProofLoading}
+                         className="w-full bg-[#8C3F3F] hover:bg-[#A34B4B] disabled:opacity-75 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl shadow-md cursor-pointer text-sm flex items-center justify-center gap-2"
+                       >
+                          {isCookingProofLoading ? (
+                            <>
+                              <FiLoader className="w-4 h-4 animate-spin" />
+                              <span>Starting...</span>
+                            </>
+                          ) : (
+                            <span>Start Preparing</span>
+                          )}
                        </button>
                      </div>
                    )}
@@ -458,7 +563,21 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
 
                {/* Step 2: Preparing -> Out for Delivery */}
                {delivery.status === 'Preparing' && (
-                   <motion.button onClick={() => onUpdateStatus(delivery._id, 'Out for Delivery')} whileHover={{scale:1.02}} className="bg-[#8C3F3F] hover:bg-[#A34B4B] text-white font-bold px-6 py-2.5 rounded-xl cursor-pointer shadow-md text-sm transition-all">Mark Out For Delivery 🚀</motion.button>
+                   <motion.button 
+                     onClick={() => onUpdateStatus(delivery._id, 'Out for Delivery')} 
+                     disabled={isOutForDeliveryLoading}
+                     whileHover={!isOutForDeliveryLoading ? { scale: 1.02 } : {}} 
+                     className="bg-[#8C3F3F] hover:bg-[#A34B4B] disabled:opacity-75 disabled:cursor-not-allowed text-white font-bold px-6 py-2.5 rounded-xl cursor-pointer shadow-md text-sm transition-all flex items-center gap-2"
+                   >
+                     {isOutForDeliveryLoading ? (
+                       <>
+                         <FiLoader className="w-4 h-4 animate-spin" />
+                         <span>Updating...</span>
+                       </>
+                     ) : (
+                       <span>Mark Out For Delivery 🚀</span>
+                     )}
+                   </motion.button>
                )}
 
                {/* Step 3: Out for Delivery -> Delivered (OTP + Handover Proof) */}
@@ -480,7 +599,7 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
                        className="bg-[#8C3F3F] hover:bg-[#A34B4B] text-white font-bold px-4 py-2.5 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 w-full cursor-pointer text-sm"
                        onClick={() => {
                          activeOrderIdRef.current = { id: delivery._id, type: 'handover' };
-                         wid.current.open();
+                         wid.current?.open();
                        }}
                      >
                        <FiZap className="text-amber-300" /> Upload Handover Proof
@@ -488,8 +607,22 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
                    ) : (
                      <div className="w-full">
                        <img src={localUploads[`${delivery._id}_handover`]} alt="Handover" className="w-full h-32 object-cover rounded-lg border-2 border-[#8C3F3F]/30 mb-2" />
-                       <button onClick={() => onUploadProof(delivery._id, 'handover', otpInputs[delivery._id])} className="w-full bg-[#8C3F3F] hover:bg-[#A34B4B] text-white font-bold py-2.5 rounded-lg shadow-md cursor-pointer flex items-center justify-center gap-2 text-sm">
-                          <FiCheckCircle /> Complete Delivery
+                       <button 
+                         onClick={() => onUploadProof(delivery._id, 'handover', otpInputs[delivery._id])} 
+                         disabled={isHandoverProofLoading}
+                         className="w-full bg-[#8C3F3F] hover:bg-[#A34B4B] disabled:opacity-75 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-lg shadow-md cursor-pointer flex items-center justify-center gap-2 text-sm"
+                       >
+                          {isHandoverProofLoading ? (
+                            <>
+                              <FiLoader className="w-4 h-4 animate-spin" />
+                              <span>Completing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <FiCheckCircle />
+                              <span>Complete Delivery</span>
+                            </>
+                          )}
                        </button>
                      </div>
                    )}
@@ -497,55 +630,196 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
                )}
             </div>
           </div>
-        ))
+          );
+        })
       )}
     </div>
   </motion.div>
 );
 
 const QuickActions = () => (
-    <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50">
-      <h3 className="text-xl font-black text-gray-900 flex items-center gap-3 mb-6">
-        <div className="p-2 bg-purple-100 rounded-lg text-purple-600"><FiZap /></div> Quick Actions
-      </h3>
-      <div className="space-y-3">
-        <button onClick={() => toast("Analytics feature coming soon!")} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-between hover:bg-gray-100 transition-colors font-bold text-sm text-gray-700 cursor-pointer">
-          <span className="flex items-center gap-2">📈 View Analytics & Earnings</span>
-          <FiArrowRight />
+  <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50">
+    <h3 className="text-xl font-black text-gray-900 flex items-center gap-3 mb-6">
+      <div className="p-2 bg-purple-100 rounded-lg text-purple-600"><FiZap /></div> Quick Actions
+    </h3>
+    <div className="space-y-3">
+      <button onClick={() => toast("Analytics feature coming soon!")} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-between hover:bg-gray-100 transition-colors font-bold text-sm text-gray-700 cursor-pointer">
+        <span className="flex items-center gap-2">📈 View Analytics & Earnings</span>
+        <FiArrowRight />
+      </button>
+    </div>
+  </motion.div>
+);
+
+const ImageUploadBox = ({ value, onChange, placeholder = "Paste link, upload photo, or paste image (Ctrl+V)" }) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFileUpload = async (file) => {
+    if (!file || !file.type.startsWith('image/')) {
+      toast.error("Please select a valid image file.");
+      return;
+    }
+    setIsUploading(true);
+    const toastId = toast.loading("Uploading image...");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", "qbvu3y5j");
+      const res = await fetch("https://api.cloudinary.com/v1_1/dfseckyjx/image/upload", {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (data.secure_url) {
+        onChange(data.secure_url);
+        toast.success("Image uploaded successfully!", { id: toastId });
+      } else {
+        // Fallback to Base64 FileReader
+        const reader = new FileReader();
+        reader.onload = () => {
+          onChange(reader.result);
+          toast.success("Image attached!", { id: toastId });
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err) {
+      console.error(err);
+      // Fallback to Base64 FileReader
+      const reader = new FileReader();
+      reader.onload = () => {
+        onChange(reader.result);
+        toast.success("Image attached!", { id: toastId });
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          e.preventDefault();
+          const blob = items[i].getAsFile();
+          if (blob) {
+            handleFileUpload(blob);
+            return;
+          }
+        }
+      }
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2 w-full text-left" onPaste={handlePaste}>
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        accept="image/*" 
+        className="hidden" 
+        onChange={(e) => {
+          if (e.target.files && e.target.files[0]) {
+            handleFileUpload(e.target.files[0]);
+          }
+        }} 
+      />
+
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <FiLink className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+          <input 
+            type="text" 
+            placeholder={placeholder}
+            className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary/50 focus:outline-none text-xs bg-white"
+            value={value || ''} 
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </div>
+
+        <button 
+          type="button" 
+          disabled={isUploading}
+          onClick={() => fileInputRef.current?.click()} 
+          className="flex items-center gap-1.5 px-3 py-2 bg-secondary/10 hover:bg-secondary/20 text-secondary font-bold text-xs rounded-lg border border-secondary/20 transition-all cursor-pointer whitespace-nowrap shadow-xs"
+          title="Upload from device"
+        >
+          {isUploading ? (
+            <span className="animate-spin text-sm">⏳</span>
+          ) : (
+            <FiUpload className="w-3.5 h-3.5" />
+          )}
+          <span>{isUploading ? "Uploading..." : "Upload File"}</span>
         </button>
       </div>
-    </motion.div>
+
+      {value && (
+        <div className="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-gray-200 w-full">
+          <img 
+            src={value} 
+            alt="Dish Preview" 
+            className="w-12 h-12 rounded-md object-cover border border-gray-200 shadow-xs shrink-0" 
+            onError={(e) => { e.target.src = '/image.png'; }} 
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-bold text-gray-700 truncate">{value.startsWith('data:') ? 'Pasted Image File' : value}</p>
+            <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">✓ Image Ready</span>
+          </div>
+          <button 
+            type="button" 
+            onClick={() => onChange('')} 
+            className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+            title="Remove image"
+          >
+            <FiX className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      <p className="text-[11px] text-gray-400 italic">
+        💡 <b>3 Ways:</b> Paste an image link, click <b>Upload File</b>, or simply press <b>Ctrl + V</b> to paste copied images directly.
+      </p>
+    </div>
   );
+};
 
 const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
   const [isAdding, setIsAdding] = useState(false);
-  const [form, setForm] = useState({ title: '', price: '', tag: 'New', isVeg: true });
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [form, setForm] = useState({ title: '', price: '', image: '', tag: 'New', isVeg: true });
   
-  // Edit State
   const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ title: '', price: '', isVeg: true });
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [editForm, setEditForm] = useState({ title: '', price: '', image: '', isVeg: true });
 
   const handlePublish = async (e) => {
      e.preventDefault();
      if(!form.title || !form.price) return toast.error("Title and Price are required.");
      
+     setIsPublishing(true);
      try {
        const res = await api.post('/meals', form);
        if(res.status === 200 || res.status === 201) {
           toast.success("Dish Published seamlessly!");
           setIsAdding(false);
-          setForm({ title: '', price: '', tag: 'New', isVeg: true });
+          setForm({ title: '', price: '', image: '', tag: 'New', isVeg: true });
           fetchDashboardData();
        } else {
           toast.error("Failed to post dish.");
        }
      } catch (err) {
         toast.error("Network error. Is the server running?");
+     } finally {
+        setIsPublishing(false);
      }
   };
 
   const handleUpdateItem = async (e, id) => {
       e.preventDefault();
+      setIsUpdating(true);
       try {
         const res = await api.put(`/meals/${id}`, editForm);
         if(res.status === 200) {
@@ -557,11 +831,14 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
         }
       } catch (err) {
          toast.error("Network error updating meal.");
+      } finally {
+         setIsUpdating(false);
       }
   };
 
   const handleDeleteItem = async (id) => {
      if(!window.confirm("Are you sure you want to delete this dish?")) return;
+     setDeletingId(id);
      try {
        const res = await api.delete(`/meals/${id}`);
        if(res.status === 200) {
@@ -572,6 +849,8 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
        }
      } catch (err) {
         toast.error("Network error deleting meal.");
+     } finally {
+        setDeletingId(null);
      }
   };
 
@@ -584,17 +863,23 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
       <span className="text-xs font-bold bg-emerald-100 px-2 py-1 rounded-md text-emerald-600">{menu.length} Items</span>
     </div>
     {menu.length === 0 ? <p className="text-gray-400">You haven't added any meals yet.</p> : (
-        <ul className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+        <ul className="space-y-3 max-h-[340px] overflow-y-auto pr-2 custom-scrollbar">
         {menu.map((item) => (
             <motion.li key={item._id} className="relative p-0 bg-gray-50 border border-gray-100 rounded-xl hover:border-gray-200 transition-colors group overflow-hidden">
                {editingId === item._id ? (
-                  <form onSubmit={e => handleUpdateItem(e, item._id)} className="flex flex-col gap-2 p-3 bg-indigo-50/50">
+                  <form onSubmit={e => handleUpdateItem(e, item._id)} className="flex flex-col gap-2.5 p-3.5 bg-indigo-50/50">
                      <div className="flex items-center gap-2">
-                        <input type="text" className="w-full px-3 py-1.5 text-sm font-bold border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} autoFocus />
-                        <input type="number" className="w-20 px-3 py-1.5 text-sm font-black text-emerald-600 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} />
-                        <button type="submit" className="bg-indigo-500 text-white p-2 rounded-lg hover:bg-indigo-600 shadow-sm"><FiCheckCircle /></button>
-                        <button type="button" onClick={() => setEditingId(null)} className="bg-gray-200 text-gray-600 p-2 rounded-lg hover:bg-red-100 hover:text-red-500 transition-colors"><FiX /></button>
+                        <input type="text" className="w-full px-3 py-1.5 text-sm font-bold border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} autoFocus placeholder="Dish title" />
+                        <input type="number" className="w-24 px-3 py-1.5 text-sm font-black text-emerald-600 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} placeholder="Price" />
+                        <button type="submit" disabled={isUpdating} className="bg-indigo-500 disabled:opacity-75 text-white p-2 rounded-lg hover:bg-indigo-600 shadow-sm cursor-pointer flex items-center justify-center">
+                          {isUpdating ? <FiLoader className="w-4 h-4 animate-spin" /> : <FiCheckCircle />}
+                        </button>
+                        <button type="button" disabled={isUpdating} onClick={() => setEditingId(null)} className="bg-gray-200 text-gray-600 p-2 rounded-lg hover:bg-red-100 hover:text-red-500 transition-colors cursor-pointer"><FiX /></button>
                      </div>
+                     <ImageUploadBox 
+                        value={editForm.image} 
+                        onChange={(img) => setEditForm({...editForm, image: img})} 
+                     />
                      <div className="flex gap-4 items-center pl-1">
                         <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-gray-600">
                            <input type="radio" checked={editForm.isVeg === true} onChange={() => setEditForm({...editForm, isVeg: true})} className="text-emerald-500 focus:ring-emerald-500" /> Veg 🟢
@@ -605,18 +890,36 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
                      </div>
                   </form>
                ) : (
-                  <div className="flex justify-between items-center p-4">
-                     <span className="font-bold text-gray-800 flex items-center gap-1.5">
-                       <span>{item.isVeg !== false ? '🟢' : '🔴'}</span>
-                       {item.title}
-                     </span>
-                     <div className="flex items-center gap-3">
-                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-24 bg-white/80 backdrop-blur-sm px-2 py-1 rounded-lg border border-gray-200 shadow-sm">
-                          <button onClick={() => { setEditingId(item._id); setEditForm({ title: item.title, price: item.price, isVeg: item.isVeg !== false }); }} className="text-blue-500 hover:bg-blue-50 p-1.5 rounded-md transition-colors"><FiEdit2 className="w-4 h-4" /></button>
-                          <div className="w-px h-4 bg-gray-200 mx-1"></div>
-                          <button onClick={() => handleDeleteItem(item._id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors"><FiTrash2 className="w-4 h-4" /></button>
+                  <div className="flex justify-between items-center p-3">
+                     <div className="flex items-center gap-3 min-w-0">
+                       {item.image ? (
+                         <img src={item.image} alt={item.title} className="w-10 h-10 rounded-lg object-cover border border-gray-200 shrink-0" onError={(e) => { e.target.src = '/image.png'; }} />
+                       ) : (
+                         <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-sm shrink-0">
+                           🍲
+                         </div>
+                       )}
+                       <div className="min-w-0">
+                         <span className="font-bold text-gray-800 flex items-center gap-1.5 text-sm truncate">
+                           <span>{item.isVeg !== false ? '🟢' : '🔴'}</span>
+                           {item.title}
+                         </span>
+                         {item.tag && <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{item.tag}</span>}
                        </div>
-                       <span className="font-black text-emerald-600 bg-emerald-50 ring-1 ring-emerald-200 px-3 py-1 rounded-lg z-10">₹{item.price}</span>
+                     </div>
+                     <div className="flex items-center gap-3 shrink-0">
+                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-24 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg border border-gray-200 shadow-sm">
+                          <button onClick={() => { setEditingId(item._id); setEditForm({ title: item.title, price: item.price, image: item.image || '', isVeg: item.isVeg !== false }); }} className="text-blue-500 hover:bg-blue-50 p-1.5 rounded-md transition-colors cursor-pointer"><FiEdit2 className="w-4 h-4" /></button>
+                          <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                          <button 
+                            onClick={() => handleDeleteItem(item._id)} 
+                            disabled={deletingId === item._id}
+                            className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            {deletingId === item._id ? <FiLoader className="w-4 h-4 animate-spin" /> : <FiTrash2 className="w-4 h-4" />}
+                          </button>
+                       </div>
+                       <span className="font-black text-emerald-600 bg-emerald-50 ring-1 ring-emerald-200 px-3 py-1 rounded-lg z-10 text-sm">₹{item.price}</span>
                      </div>
                   </div>
                )}
@@ -632,11 +935,12 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
             animate={{ opacity: 1, height: 'auto' }} 
             exit={{ opacity: 0, height: 0 }}
             onSubmit={handlePublish}
-            className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl flex flex-col gap-3 overflow-hidden"
+            className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl flex flex-col gap-3 overflow-hidden text-left"
           >
-             <input type="text" placeholder="Dish Name (e.g. Rajma Chawal)" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none" value={form.title} onChange={e => setForm({...form, title: e.target.value})} autoFocus />
+             <input type="text" placeholder="Dish Name (e.g. Rajma Chawal, Brownie, Biryani)" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none text-sm bg-white" value={form.title} onChange={e => setForm({...form, title: e.target.value})} autoFocus />
+             
              <div className="flex gap-2">
-                <input type="number" placeholder="Price (₹)" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none" value={form.price} onChange={e => setForm({...form, price: e.target.value})} />
+                <input type="number" placeholder="Price (₹)" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none text-sm bg-white" value={form.price} onChange={e => setForm({...form, price: e.target.value})} />
                 <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none bg-white text-sm" value={form.tag} onChange={e => setForm({...form, tag: e.target.value})}>
                    <option value="New">New</option>
                    <option value="Bestseller">Bestseller</option>
@@ -644,6 +948,17 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
                    <option value="Sweet">Sweet</option>
                 </select>
              </div>
+
+             <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                   <FiImage className="text-secondary" /> Food Photo (Upload, Paste, or Link):
+                </label>
+                <ImageUploadBox 
+                   value={form.image} 
+                   onChange={(img) => setForm({...form, image: img})} 
+                />
+             </div>
+
              <div className="flex gap-4 items-center px-1">
                 <span className="text-xs font-bold text-gray-500">Type:</span>
                 <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-gray-600">
@@ -653,9 +968,19 @@ const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
                    <input type="radio" checked={form.isVeg === false} onChange={() => setForm({...form, isVeg: false})} className="text-red-500 focus:ring-red-500" /> Non-Veg 🔴
                 </label>
              </div>
+
              <div className="flex gap-2 mt-1">
-                <button type="button" onClick={() => setIsAdding(false)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-lg font-bold text-sm">Cancel</button>
-                <button type="submit" className="flex-1 bg-secondary hover:bg-secondary-hover text-white py-2 rounded-lg shadow-md font-bold text-sm cursor-pointer shadow-secondary/10">Publish</button>
+                <button type="button" disabled={isPublishing} onClick={() => setIsAdding(false)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-lg font-bold text-sm cursor-pointer disabled:opacity-50">Cancel</button>
+                <button type="submit" disabled={isPublishing} className="flex-1 bg-secondary hover:bg-secondary-hover text-white py-2 rounded-lg shadow-md font-bold text-sm cursor-pointer shadow-secondary/10 disabled:opacity-75 flex items-center justify-center gap-2">
+                  {isPublishing ? (
+                    <>
+                      <FiLoader className="w-4 h-4 animate-spin" />
+                      <span>Publishing...</span>
+                    </>
+                  ) : (
+                    <span>Publish</span>
+                  )}
+                </button>
              </div>
           </motion.form>
        )}
@@ -695,7 +1020,7 @@ const RecentReviews = ({ reviews }) => (
     </motion.div>
 );
 
-const CustomFoodRequestsFeed = ({ requests, onAccept }) => (
+const CustomFoodRequestsFeed = ({ requests, onAccept, actionLoadingId }) => (
   <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgba(60,34,34,0.04)] border border-white/50">
     <div className="flex justify-between items-center mb-6">
       <h3 className="text-2xl font-serif font-black text-espresso flex items-center gap-3">
@@ -707,7 +1032,9 @@ const CustomFoodRequestsFeed = ({ requests, onAccept }) => (
       {requests.length === 0 ? (
         <p className="text-espresso-light/60 font-medium text-left">No custom food requests from hostelers right now. Check back soon!</p>
       ) : (
-        requests.map((req) => (
+        requests.map((req) => {
+          const isAccepting = actionLoadingId === `accept_${req._id}`;
+          return (
           <motion.div key={req._id} whileHover={{ scale: 1.01 }} className="border border-gray-100 p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 bg-white hover:border-secondary transition-colors shadow-sm group text-left">
             <div className="flex-1">
               <p className="font-black text-xl text-espresso mb-1">{req.dishName}</p>
@@ -725,15 +1052,24 @@ const CustomFoodRequestsFeed = ({ requests, onAccept }) => (
               <span className="text-xl font-black text-primary bg-primary/10 px-4 py-2 rounded-xl ring-1 ring-primary/20 mr-2">₹{req.price}</span>
               <motion.button 
                 onClick={() => onAccept(req._id)} 
-                whileHover={{ scale: 1.05 }} 
-                whileTap={{ scale: 0.95 }} 
-                className="px-5 py-2.5 font-black text-white bg-gradient-to-r from-secondary to-secondary-hover rounded-xl shadow-lg hover:shadow-secondary/20 cursor-pointer"
+                disabled={isAccepting}
+                whileHover={!isAccepting ? { scale: 1.05 } : {}} 
+                whileTap={!isAccepting ? { scale: 0.95 } : {}} 
+                className="px-5 py-2.5 font-black text-white bg-gradient-to-r from-secondary to-secondary-hover rounded-xl shadow-lg hover:shadow-secondary/20 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                Accept &amp; Cook 🍳
+                {isAccepting ? (
+                  <>
+                    <FiLoader className="w-4 h-4 animate-spin" />
+                    <span>Accepting...</span>
+                  </>
+                ) : (
+                  <span>Accept &amp; Cook 🍳</span>
+                )}
               </motion.button>
             </div>
           </motion.div>
-        ))
+          );
+        })
       )}
     </div>
   </motion.div>

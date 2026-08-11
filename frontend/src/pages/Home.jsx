@@ -55,7 +55,7 @@ const Home = () => {
       >
         <div className="flex items-center gap-3 cursor-pointer">
           <span className="text-2xl font-serif font-black tracking-tight text-espresso">
-            Cravyo<span className="text-primary">.</span>
+            Craavyo<span className="text-primary">.</span>
           </span>
         </div>
 
@@ -268,11 +268,11 @@ const Home = () => {
             <div className="mb-6 relative w-full">
               {/* Add line spacing using letter-spacing */}
               <h1 className="text-5xl sm:text-6xl lg:text-7.5xl font-serif font-black text-espresso tracking-tight leading-[1.2] mb-6 ">
-                Craving <br />
+                Craaving <br />
                 <span className="text-primary">Ghar Ka Khana?</span> <br />
                 We've Got You!
               </h1>
-              {/* Floating flower to the right of Craving */}
+              {/* Floating flower to the right of Craaving */}
               <motion.span
                 animate={{ scale: [0.9, 1.05, 0.9] }}
                 transition={{ duration: 2, repeat: Infinity }}
@@ -352,7 +352,7 @@ const Home = () => {
             >
               <img
                 src={heroThaliImage}
-                alt="Traditional Cravyo Thali Platter"
+                alt="Traditional Craavyo Thali Platter"
                 className="w-full h-full object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.3)] lg:top-[-10%]"
               />
             </div>
@@ -360,7 +360,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* HOW CRAVYO WORKS SECTION */}
+      {/* HOW CRAAVYO WORKS SECTION */}
       <section id="how-it-works" className="py-24 px-4 sm:px-8 lg:px-16 max-w-[1400px] mx-auto relative bg-cream overflow-hidden">
 
         {/* Global Scattered Ornaments (Flowers & Leaves) */}
@@ -388,9 +388,9 @@ const Home = () => {
         <span className="absolute right-[15%] bottom-[2%] text-secondary text-xl select-none opacity-60">🍃</span>
 
         <div className="text-center mb-16 relative z-10">
-          <h2 className="text-4xl sm:text-5xl font-serif font-black text-[#3C2222] mb-3">How Cravyo Works</h2>
+          <h2 className="text-4xl sm:text-5xl font-serif font-black text-[#3C2222] mb-3">How Craavyo Works</h2>
           <div className="inline-flex items-center gap-2 justify-center">
-            <p className="text-lg sm:text-xl font-bold text-[#C27C5B] tracking-wide">From craving to eating — it's just four simple steps</p>
+            <p className="text-lg sm:text-xl font-bold text-[#C27C5B] tracking-wide">From craaving to eating — it's just four simple steps</p>
           </div>
         </div>
 
@@ -549,7 +549,7 @@ const Home = () => {
           <div className="max-w-6xl mx-auto flex flex-col items-center relative z-20">
             {/* Badge */}
             <span className="bg-[#FCF9F6] text-[#802B2B] px-5 py-1.5 rounded-full text-[13px] font-bold shadow-sm border border-[#FCF9F6] mb-5">
-              Why Cravyo?
+              Why Craavyo?
             </span>
 
             <h2 className="text-4xl sm:text-5xl font-serif font-black text-white tracking-tight leading-[1.15] mb-2 max-w-5xl">
@@ -629,14 +629,14 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 4. STORIES FROM THE CRAVYO FAMILY (TESTIMONIALS SECTION) */}
+      {/* 4. STORIES FROM THE CRAAVYO FAMILY (TESTIMONIALS SECTION) */}
       <section className="py-16 sm:py-20 px-4 sm:px-8 lg:px-16 w-full relative z-10 bg-[#FFFAEF]">
         <div className="text-center mb-16 flex flex-col items-center">
           <span className="bg-[#EBD9D9] text-[#6B3B32] px-6 py-2 rounded-full text-sm font-bold shadow-sm mb-6">
             Real Stories
           </span>
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-black text-[#3C2222] mb-4">
-            Stories from the Cravyo family
+            Stories from the Craavyo family
           </h2>
           <p className="text-lg sm:text-xl font-bold text-[#8D6A4E] tracking-wide">
             Real meals. Real friendships. Real comfort.
@@ -646,7 +646,7 @@ const Home = () => {
         {/* Mobile View - Stacked */}
         <div className="lg:hidden flex flex-col gap-6 max-w-lg mx-auto">
           <div className="bg-[#FCF9F6] border border-[#EBE1D7] rounded-3xl p-6 shadow-sm relative text-center">
-            <p className="text-[#6B3B32] font-serif font-bold text-lg mb-4">"Got dal-chawal from a senior's mom last week. I literally teared up. Cravyo is magic."</p>
+            <p className="text-[#6B3B32] font-serif font-bold text-lg mb-4">"Got dal-chawal from a senior's mom last week. I literally teared up. Craavyo is magic."</p>
             <h4 className="text-[#D4807D] font-bold">Ananya R.</h4>
             <span className="text-xs text-[#D4807D]">Hosteler • Year 2</span>
           </div>
@@ -672,7 +672,7 @@ const Home = () => {
                 {[...Array(5)].map((_, i) => <FaStar key={i} className="text-[#C87474] text-[11px]" />)}
               </div>
               <p className="text-[#6B3B32] font-serif font-bold text-[13px] leading-relaxed">
-                Got dal-chawal from a senior's mom last week.<br />I literally teared up.<br />Cravyo is magic.
+                Got dal-chawal from a senior's mom last week.<br />I literally teared up.<br />Craavyo is magic.
               </p>
             </div>
             <div className="bg-[#C87474] text-white rounded-b-[20px] pt-8 pb-3 text-center relative">
@@ -724,7 +724,7 @@ const Home = () => {
 
               <div className="relative z-10">
                 <p className="text-[#6B3B32] font-serif font-bold text-[12px] leading-relaxed mb-3 text-center">
-                  Mom cooks extra now just so I can share. I've made 3 close friends through Cravyo.
+                  Mom cooks extra now just so I can share. I've made 3 close friends through Craavyo.
                 </p>
                 <div className="flex justify-between items-end">
                   <div className="text-center w-full">
@@ -806,7 +806,7 @@ const Home = () => {
               <div className="flex-1 relative flex flex-col justify-center pl-3">
                 <span className="text-[#C87474] font-serif text-[70px] absolute -top-7 right-0 opacity-50 leading-none font-black">”</span>
                 <p className="text-[#6B3B32] font-serif font-bold text-[15px] leading-[1.5] relative z-10 pt-1">
-                  "Cravyo saved me from hostel food! Getting maa ke haath ka khana every week is a blessing."
+                  "Craavyo saved me from hostel food! Getting maa ke haath ka khana every week is a blessing."
                 </p>
               </div>
             </div>
@@ -936,7 +936,7 @@ const Home = () => {
             </h2>
 
             <p className="text-[#4A1A1A] font-serif font-bold text-[17px] mb-8 max-w-[600px] leading-[1.6] text-center">
-              Join Cravyo today and never miss the taste of ghar ka khana again.<br />
+              Join Craavyo today and never miss the taste of ghar ka khana again.<br />
               Sign up now and get your first meal request free!
             </p>
 
@@ -972,7 +972,7 @@ const Home = () => {
           {/* Brand info */}
           <div className="flex flex-col items-start gap-4">
             <span className="text-[28px] font-serif font-black text-white tracking-tight">
-              Cravyo
+              Craavyo
             </span>
             <p className="text-[11px] font-medium leading-relaxed opacity-80 pr-4">
               Connecting hostelers with home-cooked meals. Taste the love of home, right at your campus.
@@ -1016,7 +1016,7 @@ const Home = () => {
         {/* Copyright bar */}
         <div className="max-w-6xl mx-auto border-t border-white/20 pt-10 text-center pb-8">
           <p className="text-[20px] font-bold text-white/40">
-            @Cravyo Made for Students
+            @Craavyo Made for Students
           </p>
         </div>
       </footer>

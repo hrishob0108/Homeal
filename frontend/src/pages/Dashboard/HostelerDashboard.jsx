@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiHome, FiUser, FiShoppingCart, FiSearch, FiClock, FiPackage, FiStar, FiLogOut, FiTrendingUp, FiMapPin, FiArrowRight, FiX, FiBell, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
-import { FaGraduationCap } from 'react-icons/fa';
+import { FiHome, FiUser, FiShoppingCart, FiSearch, FiClock, FiPackage, FiStar, FiLogOut, FiTrendingUp, FiMapPin, FiArrowRight, FiX, FiBell, FiChevronRight, FiChevronLeft, FiAlertTriangle, FiRepeat, FiLoader } from 'react-icons/fi';
+import { FaUtensils, FaHeart, FaStar, FaGraduationCap } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { useSocket } from '../../context/SocketContext';
 import RequestFoodModal from '../../components/RequestFoodModal';
 import ReviewModal from '../../components/ReviewModal';
+import defaultMealImage from '../../assets/image.png';
 
 // Animation configs
 const containerVariants = {
@@ -34,6 +35,7 @@ const HostelerDashboard = () => {
   const [selectedTag, setSelectedTag] = useState("All");
   const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [orderingMealId, setOrderingMealId] = useState(null);
   
   const user = JSON.parse(sessionStorage.getItem('currentUser'));
 
@@ -57,11 +59,13 @@ const HostelerDashboard = () => {
     if (!socket) return;
 
     const handleOrderStatusUpdated = (updatedOrder) => {
+      console.log("[HostelerDashboard] Received order_status_updated via socket:", updatedOrder);
       toast.success(`Order status updated to: ${updatedOrder.status}`);
       setNotifications(prev => [
         { id: Date.now(), text: `Order for "${updatedOrder.dishName}" updated to "${updatedOrder.status}"` },
         ...prev
       ]);
+      setMyOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
       fetchDashboardData();
     };
 
@@ -99,8 +103,12 @@ const HostelerDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch live feed
-      const resMeals = await api.get('/meals');
+      const userCollege = (user?.collegeName || "").trim();
+
+      // Fetch live feed strictly for this college
+      const resMeals = await api.get('/meals', {
+        params: userCollege ? { collegeName: userCollege } : {}
+      });
       setMeals(resMeals.data);
 
       // Fetch personal orders
@@ -149,20 +157,29 @@ const HostelerDashboard = () => {
   };
 
   const handleOrderMeal = async (meal) => {
+    const mealId = meal._id || meal.mealId || meal.id;
+    const targetSellerId = typeof meal.createdBy === 'object' 
+      ? (meal.createdBy._id || meal.createdBy.id) 
+      : (meal.createdBy || meal.sellerId);
+    
+    setOrderingMealId(mealId || meal._id || meal.id);
     try {
-      const targetSellerId = typeof meal.createdBy === 'object' ? (meal.createdBy._id || meal.createdBy.id) : meal.createdBy;
       const payload = {
         sellerId: targetSellerId,
-        mealId: meal._id,
-        dishName: meal.title,
+        mealId: mealId,
+        dishName: meal.title || meal.dishName,
         price: meal.price,
+        imageUrl: meal.image || meal.imageUrl || '',
         deliveryLocation: "Room Delivery",
         neededBy: "Asap" 
       };
 
       const res = await api.post('/orders', payload);
       if(res.status === 200 || res.status === 201) {
-        toast.success(`Successfully requested ${meal.title}!`);
+        toast.success(`Successfully requested ${meal.title || meal.dishName}!`);
+        if (res.data) {
+          setMyOrders(prev => [res.data, ...prev.filter(o => o._id !== res.data._id)]);
+        }
         fetchDashboardData();
       } else {
         toast.error("Failed to place order.");
@@ -170,6 +187,8 @@ const HostelerDashboard = () => {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Network error placing order.");
+    } finally {
+      setOrderingMealId(null);
     }
   };
 
@@ -190,10 +209,7 @@ const HostelerDashboard = () => {
   const pendingRequests = myRequests.filter(r => r.status === 'Pending');
 
   return (
-    <div className="bg-cream min-h-screen font-sans relative overflow-x-hidden text-espresso pb-12">
-
-      <div className="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-primary/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
-      <div className="fixed bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-secondary/15 rounded-full blur-[120px] pointer-events-none z-0"></div>
+    <div className="bg-[#FFF0DD] min-h-screen font-sans relative overflow-x-hidden text-espresso pb-12">
 
       <Header 
         user={user} 
@@ -215,20 +231,31 @@ const HostelerDashboard = () => {
               meals={filteredMeals} 
               cookStats={cookStats} 
               onOrder={handleOrderMeal} 
+              orderingMealId={orderingMealId}
               selectedTag={selectedTag}
               setSelectedTag={setSelectedTag}
             />
           </div>
+
+          <HostelerStatsSection myOrders={myOrders} myReviews={myReviews} />
           
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
-              <OrderHistory orders={pastOrders} myReviews={myReviews} onRateOrder={setSelectedOrderForReview} />
-            </div>
-            <div className="space-y-8">
-              <OrderTracking activeOrder={activeOrder} activeOrdersCount={activeOrdersCount} />
-              <MyCustomRequests requests={pendingRequests} onCancel={handleCancelRequest} />
-              <PromoCard />
-            </div>
+          {/* Track Order Hero Section */}
+          <TrackOrderHero activeOrder={activeOrder} activeOrdersCount={activeOrdersCount} />
+
+          {/* Active Requests & Past Requests 2-Column Grid */}
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            <ActiveRequestsSection 
+              requests={pendingRequests} 
+              activeOrders={myOrders.filter(o => o.status !== 'Delivered' && o.status !== 'Declined')} 
+              onCancel={handleCancelRequest}
+            />
+            <PastRequestsSection 
+              orders={pastOrders} 
+              myReviews={myReviews} 
+              onRateOrder={setSelectedOrderForReview} 
+              onReorder={handleOrderMeal}
+              orderingMealId={orderingMealId}
+            />
           </div>
         </motion.div>
       </main>
@@ -256,10 +283,10 @@ const HostelerDashboard = () => {
 
 // Sub-components
 const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, setIsNotifOpen, searchQuery, setSearchQuery }) => {
-  if (!user || !user.token || !user.collegeName || !user.collegeName.trim() || !user.isPhoneVerified) return null;
-
   const handleLogout = () => {
     sessionStorage.removeItem('currentUser');
+    sessionStorage.removeItem('user');
+    localStorage.removeItem('token');
     toast.success("Successfully logged out");
     navigate('/login');
   };
@@ -276,7 +303,7 @@ const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, 
           
           {/* Left: Logo */}
           <Link to="/" className="text-[32px] font-serif font-bold text-[#8C3F3F] tracking-tight shrink-0">
-            Cravyo
+            Craavyo
           </Link>
 
           {/* Middle: Search Bar (Exactly Centered) */}
@@ -374,14 +401,21 @@ const WelcomeBanner = ({ user, onRequestCustom }) => {
     <motion.div variants={itemVariants} className="mb-10 w-full relative bg-[linear-gradient(90deg,#C45257_0%,#D63447_46%,#FADBB0_91%)] rounded-[30px] overflow-hidden flex flex-col md:flex-row shadow-xl">
       {/* Text content left */}
       <div className="p-8 md:p-12 lg:px-[64px] lg:py-[48px] flex-1 text-left z-10">
-         <p className="text-white/95 text-sm md:text-[15px] font-medium tracking-wide mb-4 flex items-center gap-2">
-           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-             <path d="M8 0L9.8 6.2L16 8L9.8 9.8L8 16L6.2 9.8L0 8L6.2 6.2L8 0Z" fill="white"/>
-           </svg>
-           Good Afternoon, {firstName}
-         </p>
+         <div className="flex flex-wrap items-center gap-3 mb-4">
+           <p className="text-white/95 text-sm md:text-[15px] font-medium tracking-wide flex items-center gap-2">
+             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+               <path d="M8 0L9.8 6.2L16 8L9.8 9.8L8 16L6.2 9.8L0 8L6.2 6.2L8 0Z" fill="white"/>
+             </svg>
+             Good Afternoon, {firstName}
+           </p>
+           {user?.collegeName && (
+             <span className="bg-black/20 text-white text-xs font-semibold px-3 py-1 rounded-full backdrop-blur-sm border border-white/20 flex items-center gap-1.5 shadow-sm">
+               🎓 {user.collegeName}
+             </span>
+           )}
+         </div>
          <h2 className="text-white font-serif text-[36px] sm:text-[42px] lg:text-[48px] leading-[1.1] mb-5 font-bold tracking-tight">
-           Every craving deserves a <br/> homemade touch.
+           Every craaving deserves a <br/> homemade touch.
          </h2>
          <p className="text-white/90 font-medium text-[15px] md:text-[17px] mb-8">
            Find comforting meals prepared just for you.
@@ -393,12 +427,12 @@ const WelcomeBanner = ({ user, onRequestCustom }) => {
               onClick={onRequestCustom}
               className="bg-white text-black font-semibold px-7 py-3.5 rounded-[999px] text-[16px] transition-all flex items-center gap-2 cursor-pointer shadow-sm"
            >
-              <span className="text-xl leading-none font-bold">+</span> Post a Craving
+              <span className="text-xl leading-none font-bold">+</span> Post a Craaving
            </motion.button>
            <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => document.getElementById('craving-section')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => document.getElementById('craaving-section')?.scrollIntoView({ behavior: 'smooth' })}
               className="bg-transparent border border-white text-white font-semibold px-7 py-3.5 rounded-[999px] text-[16px] hover:bg-white hover:text-[#4D2B2B] transition-all flex items-center gap-2 cursor-pointer"
            >
               Browse menu <FiChevronRight />
@@ -457,15 +491,15 @@ const MyCustomRequests = ({ requests, onCancel }) => (
   </motion.div>
 );
 
-const AvailableToday = ({ meals, cookStats, onOrder, selectedTag, setSelectedTag }) => (
-  <motion.div id="craving-section" variants={itemVariants} className="w-full">
+const AvailableToday = ({ meals, cookStats, onOrder, orderingMealId, selectedTag, setSelectedTag }) => (
+  <motion.div id="craaving-section" variants={itemVariants} className="w-full">
     <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-8">
       <h3 className="text-[48px] font-serif text-[#4D2B2B] flex items-center gap-4 leading-none">
         <span className="bg-[#D0555D] text-white text-[12px] font-bold px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1.5 shadow-sm transform -translate-y-1">
           <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
           Live
         </span>
-        What are you craving?
+        What are you craaving?
       </h3>
       <Link to="/all-meals" className="text-[#8C3F3F] font-bold text-[18px] hover:underline cursor-pointer font-serif transition-colors">See All</Link>
     </div>
@@ -499,16 +533,18 @@ const AvailableToday = ({ meals, cookStats, onOrder, selectedTag, setSelectedTag
     ) : (
       <div className="relative group/carousel">
         <div className="flex gap-[20px] overflow-x-auto pb-12 pt-4 px-2 -mx-2 custom-scrollbar snap-x relative" id="meals-carousel">
-          {meals.map((meal) => (
-          <div key={meal._id} className="min-w-[240px] w-[240px] snap-start bg-[#F4DCD0] rounded-xl shadow-md border border-[#E3C2B1] flex flex-col relative text-left group cursor-pointer transition-transform duration-300 hover:-translate-y-1">
+          {meals.map((meal) => {
+            const isOrderingThis = orderingMealId === meal._id || orderingMealId === meal.id;
+            return (
+          <div key={meal._id} className="min-w-[240px] w-[240px] snap-start bg-[#E7082F]/[0.12] backdrop-blur-md rounded-[15px] shadow-sm border border-[#E7082F]/30 flex flex-col relative text-left group cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-[#E7082F]/50 overflow-hidden">
             
             {/* Image Section */}
-            <div className="relative h-[160px] w-full bg-gray-200 overflow-hidden rounded-t-xl">
-              <img src={meal.image || '/src/assets/image.png'} alt={meal.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
+            <div className="relative h-[160px] w-full bg-[#E7082F]/5 overflow-hidden rounded-t-[15px]">
+              <img src={meal.image || defaultMealImage} alt={meal.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
               
               {/* Tags (Bestseller, Spicy) */}
               {meal.tag && (
-                <div className={`absolute top-0 right-0 text-white font-bold text-[11px] px-3 py-1 rounded-bl-xl shadow-sm ${meal.tag === 'Spicy' ? 'bg-[#DF3747]' : meal.tag === 'New' ? 'bg-[#964751]' : 'bg-[#C48C5E]'}`}>
+                <div className={`absolute top-0 right-0 text-white font-bold text-[11px] px-3 py-1 rounded-bl-[12px] shadow-sm ${meal.tag === 'Spicy' ? 'bg-[#DF3747]' : meal.tag === 'New' ? 'bg-[#964751]' : 'bg-[#C48C5E]'}`}>
                   {meal.tag}
                 </div>
               )}
@@ -521,41 +557,59 @@ const AvailableToday = ({ meals, cookStats, onOrder, selectedTag, setSelectedTag
             </div>
 
             {/* Content Section */}
-            <div className="px-4 py-3 flex flex-col flex-1 justify-between">
+            <div className="px-4 py-3.5 flex flex-col flex-1 justify-between">
               <div>
                 <h4 className="font-serif font-bold text-[22px] text-[#412121] leading-tight mb-1 truncate">{meal.title}</h4>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-[13px] text-[#694A42]">By <span className="font-bold text-[#412121]">{meal.cookName || 'Unknown'}</span></span>
-                  <span className="bg-[#E2CEBF] text-[#91674E] text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
-                    <FiStar className="w-3 h-3 text-[#DFA460] fill-current" /> {cookStats[meal.createdBy]?.averageRating > 0 ? cookStats[meal.createdBy].averageRating.toFixed(1) : '4.8'}<span className="text-[#91674E]/70 font-medium text-[10px]">({cookStats[meal.createdBy]?.totalReviews || 126})</span>
+                  <span className="bg-white/80 backdrop-blur-sm border border-[#E7082F]/15 text-[#8C3F3F] text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                    {cookStats[meal.createdBy]?.totalReviews > 0 ? (
+                      <>
+                        <FiStar className="w-3 h-3 text-[#DFA460] fill-current" /> {cookStats[meal.createdBy].averageRating.toFixed(1)}
+                        <span className="text-[#8C3F3F]/70 font-medium text-[10px]">({cookStats[meal.createdBy].totalReviews})</span>
+                      </>
+                    ) : (
+                      <span className="text-[#8C3F3F] font-semibold text-[10px] flex items-center gap-0.5">
+                        <span className="text-[#DFA460]">✨</span> New Cook
+                      </span>
+                    )}
                   </span>
                 </div>
               </div>
               
-              <div className="flex justify-between items-center pt-2 border-t border-[#E6CDBC]">
-                <span className="font-sans font-bold text-[20px] text-[#692E31]">₹{meal.price}</span>
+              <div className="flex justify-between items-center pt-2.5 border-t border-[#E7082F]/20">
+                <span className="font-sans font-bold text-[20px] text-[#8C3F3F]">₹{meal.price}</span>
                 <button 
                   onClick={() => onOrder(meal)}
-                  className="bg-[#5B292D] hover:bg-[#431D1F] text-white font-medium text-[13px] px-3 py-1.5 rounded-md transition-colors shadow-sm cursor-pointer"
+                  disabled={isOrderingThis}
+                  className="bg-[#8C3F3F] hover:bg-[#6E3030] disabled:opacity-75 disabled:cursor-not-allowed text-white font-medium text-[13px] px-3.5 py-1.5 rounded-[10px] transition-colors shadow-xs hover:shadow-sm flex items-center gap-1.5 cursor-pointer"
                 >
-                  Order +
+                  {isOrderingThis ? (
+                    <>
+                      <FiLoader className="w-3.5 h-3.5 animate-spin" />
+                      <span>Ordering...</span>
+                    </>
+                  ) : (
+                    <span>Order +</span>
+                  )}
                 </button>
               </div>
             </div>
           </div>
-        ))}
+            );
+          })}
         </div>
         
         {/* Carousel Arrows */}
         <button 
           onClick={() => document.getElementById('meals-carousel').scrollBy({ left: -350, behavior: 'smooth' })}
-          className="hidden lg:flex absolute -left-6 top-[40%] -translate-y-1/2 bg-[#FFF8F2] hover:bg-[#F4DCD0] text-[#692E31] w-14 h-14 rounded-full shadow-md border border-[#E3C2B1] items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg cursor-pointer z-10"
+          className="hidden lg:flex absolute -left-6 top-[40%] -translate-y-1/2 bg-white/90 backdrop-blur-md hover:bg-[#FFF8F2] text-[#8C3F3F] w-14 h-14 rounded-full shadow-md border border-[#E7082F]/25 items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg cursor-pointer z-10"
         >
           <FiChevronLeft className="w-8 h-8 stroke-[2]" />
         </button>
         <button 
           onClick={() => document.getElementById('meals-carousel').scrollBy({ left: 350, behavior: 'smooth' })}
-          className="hidden lg:flex absolute -right-6 top-[40%] -translate-y-1/2 bg-[#FFF8F2] hover:bg-[#F4DCD0] text-[#692E31] w-14 h-14 rounded-full shadow-md border border-[#E3C2B1] items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg cursor-pointer z-10"
+          className="hidden lg:flex absolute -right-6 top-[40%] -translate-y-1/2 bg-white/90 backdrop-blur-md hover:bg-[#FFF8F2] text-[#8C3F3F] w-14 h-14 rounded-full shadow-md border border-[#E7082F]/25 items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg cursor-pointer z-10"
         >
           <FiChevronRight className="w-8 h-8 stroke-[2]" />
         </button>
@@ -564,167 +618,491 @@ const AvailableToday = ({ meals, cookStats, onOrder, selectedTag, setSelectedTag
   </motion.div>
 );
 
-const OrderTracking = ({ activeOrder, activeOrdersCount }) => {
-  const steps = ['Pending', 'Accepted', 'Preparing', 'Out for Delivery', 'Delivered'];
-  const currentStep = activeOrder ? steps.indexOf(activeOrder.status) : -1;
+const HostelerStatsSection = ({ myOrders = [], myReviews = [] }) => {
+  const deliveredCount = myOrders.filter(o => o.status === 'Delivered').length;
+  const mealsOrdered = deliveredCount;
+  
+  const uniqueCooks = new Set(myOrders.map(o => o.sellerId?._id || o.sellerId).filter(Boolean)).size;
+  const favoriteCount = uniqueCooks;
+  
+  const avgRating = myReviews.length > 0 
+    ? (myReviews.reduce((acc, r) => acc + r.rating, 0) / myReviews.length).toFixed(1) 
+    : '0.0';
+    
+  const thisMonthCount = myOrders.filter(o => {
+    if (!o.createdAt) return false;
+    const d = new Date(o.createdAt);
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+  const thisMonthVal = thisMonthCount;
+
+  const stats = [
+    {
+      id: 'meals',
+      value: mealsOrdered,
+      label: 'Meals ordered',
+      icon: (
+        <svg className="w-5 h-5 text-[#C44355]" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z" />
+        </svg>
+      ),
+      iconBox: 'bg-[#F2BAC1]/60 border border-[#E0909A]',
+    },
+    {
+      id: 'favorites',
+      value: favoriteCount,
+      label: 'Favorite HomeBites',
+      icon: <FaHeart className="w-5 h-5 text-[#DB3B6B]" />,
+      iconBox: 'bg-[#F7B6C8]/60 border border-[#E2839E]',
+    },
+    {
+      id: 'rating',
+      value: avgRating,
+      label: 'Your rating',
+      icon: <FaStar className="w-5 h-5 text-[#C69138]" />,
+      iconBox: 'bg-[#EED5A5]/60 border border-[#DCBA7E]',
+    },
+    {
+      id: 'month',
+      value: thisMonthVal,
+      label: 'This month',
+      icon: <FiTrendingUp className="w-5 h-5 text-[#3B8F62] stroke-[2.5]" />,
+      iconBox: 'bg-[#BEE0CE]/60 border border-[#8DC7A5]',
+    },
+  ];
 
   return (
-    <motion.div variants={itemVariants} className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-secondary"></div>
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-serif font-black text-espresso flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg text-primary"><FiPackage /></div> Track Order
-          </h3>
-          <Link to="/track-orders" className="p-2 bg-gray-50 hover:bg-primary/10 text-gray-400 hover:text-primary rounded-xl transition-all border border-gray-100 hover:border-primary/20 shadow-sm cursor-pointer" title="View all active orders">
-             <FiArrowRight className="w-5 h-5 stroke-[3]" />
+    <motion.section 
+      variants={itemVariants} 
+      className="my-14 w-full overflow-visible"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-6 items-center">
+        {/* Left Illustration: In the back (z-0) */}
+        <div className="md:col-span-6 flex justify-start items-center -ml-4 sm:-ml-8 lg:-ml-16 overflow-visible relative z-0">
+          <div className="relative w-full">
+            <img 
+              src="/girl-food.png" 
+              alt="Girl enjoying home meal" 
+              className="w-full h-auto object-contain select-none drop-shadow-sm pointer-events-none -translate-x-6 lg:-translate-x-[140px] scale-110 sm:scale-125 lg:scale-135 origin-left"
+              onError={(e) => {
+                e.target.src = '/hero-meal.png';
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Right 2x2 Stats Grid - In front on top (z-10) */}
+        <div className="md:col-span-6 grid grid-cols-2 gap-3.5 lg:gap-5 text-left -ml-0 sm:-ml-4 lg:-ml-12 xl:-ml-20 relative z-10">
+          {stats.map((stat) => (
+            <motion.div
+              key={stat.id}
+              whileHover={{ y: -4, scale: 1.01 }}
+              transition={{ duration: 0.2 }}
+              className="bg-gradient-to-b from-[#F6E1C4] to-[#F1D8B5] border border-[#A67E5D]/40 rounded-[24px] p-6 lg:p-7 shadow-[0_6px_16px_rgba(90,50,20,0.08)] hover:shadow-[0_12px_24px_rgba(90,50,20,0.13)] transition-all flex flex-col justify-between min-h-[160px]"
+            >
+              <div className={`w-12 h-12 rounded-[14px] ${stat.iconBox} flex items-center justify-center mb-4 shadow-xs`}>
+                {stat.icon}
+              </div>
+              <div>
+                <h3 className="font-serif font-black text-4xl lg:text-[44px] text-[#3B2520] leading-none mb-1.5 tracking-tight">
+                  {stat.value}
+                </h3>
+                <p className="font-sans font-semibold text-[15px] lg:text-[16px] text-[#5A3B34]">
+                  {stat.label}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </motion.section>
+  );
+};
+
+const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
+  if (!activeOrder) return null;
+
+  const steps = ['Pending', 'Accepted', 'Preparing', 'Out for Delivery'];
+  const rawStatus = activeOrder.status || 'Pending';
+  const currentStepIndex = steps.indexOf(rawStatus) !== -1 ? steps.indexOf(rawStatus) : 0;
+
+  return (
+    <motion.section variants={itemVariants} className="my-10 w-full text-left">
+      <div className="bg-[#D79A98] rounded-[32px] p-6 lg:p-8 shadow-sm border border-[#C68583]">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-[#FFF0DD]/70 flex items-center justify-center text-[#4A2020] shadow-xs">
+              <FiPackage className="w-6 h-6 stroke-[2.2]" />
+            </div>
+            <h2 className="font-serif font-black text-2xl lg:text-3xl text-[#341818] tracking-tight">
+              Track Order
+            </h2>
+          </div>
+          <Link 
+            to="/track-orders" 
+            className="w-10 h-10 rounded-xl bg-[#FFF0DD]/80 hover:bg-[#FFF0DD] text-[#341818] flex items-center justify-center transition-all shadow-xs cursor-pointer"
+            title="Track all orders"
+          >
+            <FiArrowRight className="w-5 h-5 stroke-[2.5]" />
           </Link>
         </div>
-        
-        {activeOrdersCount > 1 && (
-          <p className="text-xs text-primary font-bold bg-primary/5 p-2.5 rounded-xl border border-primary/10 text-center mb-4 mt-2">
-            ⚠️ Tracking most recent order. Click the arrow to track all {activeOrdersCount} active orders.
-          </p>
-        )}
-        
-        {activeOrder ? (
-            <div className="text-left">
-                <div className="flex justify-between items-start p-5 bg-gradient-to-br from-primary/5 to-secondary/5 border border-primary/10 rounded-2xl relative shadow-inner">
-                    <div className="relative z-10">
-                        <p className="font-black text-lg text-espresso">{activeOrder.dishName}</p>
-                        <p className="text-sm font-semibold text-espresso-light mt-1">Provider ID: <span className="text-espresso">{activeOrder.sellerId.substring(0,6)}..</span></p>
-                    </div>
-                </div>
 
-                <div className="mt-8 ml-2 border-l-2 border-primary/10 space-y-6 relative pb-2">
-                    {steps.map((step, idx) => {
-                       const isActive = currentStep === idx;
-                       const isPast = currentStep > idx;
-                       if (step === 'Delivered' && !isPast && !isActive) return null; // hide delivered until arrived structurally
-                       
-                       return (
-                        <div key={idx} className="relative pl-6">
-                           <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 ${isActive ? 'border-secondary bg-white' : isPast ? 'border-primary bg-primary' : 'border-primary/20 bg-white'}`}>
-                              {isActive && <span className="absolute inset-0 m-auto w-2 h-2 rounded-full bg-secondary animate-pulse"></span>}
-                           </div>
-                           <p className={`font-bold ${isActive ? 'text-secondary text-lg' : isPast ? 'text-espresso-light/65' : 'text-espresso-light/35'}`}>{step}</p>
-                           {isActive && (
-                               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2 pl-4 py-2 border-l-2 border-secondary/50 text-sm text-espresso-light font-medium text-left">
-                                  {step === 'Pending' ? "Waiting for the cook to accept your request." : `Your order is currently ${step.toLowerCase()}.`}
-                                </motion.div>
-                           )}
-                           
-                           {/* Escrow Details: Cooking Proof */}
-                           {(isActive || isPast) && activeOrder.cookingProofImageUrl && step === 'Preparing' && (
-                               <div className="mt-3 pl-4 flex flex-col items-start gap-2">
-                                  <img src={activeOrder.cookingProofImageUrl} alt="Cooking Proof" className="w-24 h-24 object-cover rounded-xl border border-gray-200 shadow-sm" />
-                                  <span className="text-xs font-bold text-white bg-indigo-500 px-2 py-1 rounded">Cooking Proof</span>
-                                </div>
-                           )}
+        {/* Alert Banner */}
+        <div className="bg-[#F8E2DC]/85 border border-[#E9C3BC] rounded-2xl py-3 px-5 flex items-center justify-center gap-2.5 text-center text-[#5E3633] text-sm font-semibold mt-5 mb-6 shadow-xs">
+          <FiAlertTriangle className="w-4 h-4 text-[#C98420] shrink-0" />
+          <span>Tracking most recent order. Click the arrow to track all active orders</span>
+        </div>
 
-                           {/* Escrow Details: Delivery Proof & OTP */}
-                           {isActive && step === 'Out for Delivery' && (
-                               <div className="mt-4 pl-4 flex flex-col gap-3">
-                                  {activeOrder.otp && (
-                                    <div className="bg-green-50 border-2 border-green-200 rounded-xl p-3 flex flex-col items-center">
-                                      <p className="text-xs font-bold text-green-700 uppercase tracking-widest mb-1">Your Delivery OTP</p>
-                                      <p className="text-3xl font-black text-green-600 font-mono tracking-widest">{activeOrder.otp}</p>
-                                      <p className="text-[10px] text-green-600/70 font-medium text-center mt-1">Give this PIN to the cook when receiving your food</p>
-                                    </div>
-                                  )}
-                                  {(activeOrder.handoverProofImageUrl || activeOrder.proofImageUrl) && (
-                                    <div className="flex flex-col items-start gap-2">
-                                      <img src={activeOrder.handoverProofImageUrl || activeOrder.proofImageUrl} alt="Handover Proof" className="w-24 h-24 object-cover rounded-xl border border-gray-200 shadow-sm" />
-                                      <span className="text-xs font-bold text-white bg-primary px-2 py-1 rounded">Handover Proof</span>
-                                    </div>
-                                  )}
-                               </div>
-                           )}
-                        </div>
-                       )
-                    })}
+        {/* Main Timeline Card */}
+        <div className="bg-[#F6ECE0] rounded-[26px] p-6 lg:p-8 relative border border-[#EBD6C3] shadow-xs">
+          {/* Top Dish Info & Cook Proof */}
+          <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
+            {/* Left Dish Info */}
+            <div className="relative">
+              <div className="inline-block bg-[#D2EBD9] text-[#2F7D4E] border border-[#B5DEC0] text-[11px] font-bold px-3 py-0.5 rounded-full mb-2">
+                Arriving Today
+              </div>
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-[#EBD8C8] min-w-[220px] flex items-center gap-3.5">
+                {(activeOrder.imageUrl || (activeOrder.mealId && (activeOrder.mealId.image || activeOrder.mealId.imageUrl))) && (
+                  <img 
+                    src={activeOrder.imageUrl || activeOrder.mealId?.image || activeOrder.mealId?.imageUrl} 
+                    alt={activeOrder.dishName} 
+                    className="w-12 h-12 rounded-xl object-cover border border-[#EBD8C8] shrink-0"
+                    onError={(e) => { e.target.src = '/cravyo_hero_thali.png'; }}
+                  />
+                )}
+                <div>
+                  <h4 className="font-serif font-bold text-lg text-[#3A201C] leading-tight">
+                    {activeOrder.dishName}
+                  </h4>
+                  <p className="text-xs text-[#8A6A62] font-semibold mt-1">
+                    Provider: {activeOrder.sellerName || 'Dayscholar Cook'}
+                  </p>
                 </div>
-
-                <div className="mt-6 p-4 bg-cream/40 rounded-2xl flex justify-between items-center border border-primary/10">
-                    <div>
-                        <p className="text-xs font-bold text-espresso-light/60 uppercase tracking-widest mb-1">Estimated Arrival</p>
-                        <p className="text-3xl font-black text-espresso">ASAP</p>
-                    </div>
-                    <div className="w-12 h-12 bg-white rounded-full border border-primary/10 shadow-sm flex items-center justify-center animate-spin-slow">
-                        ⏳
-                    </div>
-                </div>
+              </div>
             </div>
-        ) : (
-            <div className="text-center py-10 px-6 bg-cream/40 rounded-2xl border border-primary/10 border-dashed">
-               <FiPackage className="w-10 h-10 text-primary/30 mx-auto mb-3" />
-               <p className="text-espresso-light/65 font-medium">You have no active orders.<br/> Time to treat yourself!</p>
+
+            {/* Cooking Proof image above Preparing step */}
+            {activeOrder.cookingProofImageUrl && (
+              <div className="flex flex-col items-center sm:mr-32 md:mr-44 lg:mr-56">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-md border-2 border-white bg-white">
+                  <img 
+                    src={activeOrder.cookingProofImageUrl} 
+                    alt="Cook proof" 
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.target.src = '/hero-meal.png'; }}
+                  />
+                </div>
+                <span className="bg-[#E99696] text-[#6A1C1C] text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-[#D97C7C] -mt-2.5 shadow-xs z-10">
+                  Cooking Proof
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* 4-Step Stepper with Alternating Labels */}
+          <div className="relative my-10 px-4 sm:px-8">
+            {/* Connecting Line */}
+            <div className="absolute top-1/2 left-8 right-8 -translate-y-1/2 h-[3px] bg-[#9C6D68]/30 z-0">
+              <div 
+                className="h-full bg-[#5E2B2B] transition-all duration-500"
+                style={{ width: `${Math.max(0, (currentStepIndex / 3) * 100)}%` }}
+              />
             </div>
-        )}
+
+            {/* 4 Step Points */}
+            <div className="relative z-10 flex justify-between items-center">
+              {steps.map((step, idx) => {
+                const isPassed = idx <= currentStepIndex;
+                const isTopLabel = idx % 2 === 1; // 1: Accepted, 3: Out for Delivery
+                
+                return (
+                  <div key={step} className="flex flex-col items-center relative">
+                    {/* Top label */}
+                    {isTopLabel && (
+                      <span className={`absolute -top-8 font-serif font-bold text-base sm:text-lg whitespace-nowrap transition-colors ${
+                        isPassed ? 'text-[#3A201C]' : 'text-[#8A6A62]/60'
+                      }`}>
+                        {step}
+                      </span>
+                    )}
+
+                    {/* Step Dot */}
+                    <div className={`w-5 h-5 rounded-full ring-4 ring-[#F6ECE0] transition-all ${
+                      isPassed ? 'bg-[#5E2B2B] scale-110 shadow-xs' : 'bg-[#D0B8A8]'
+                    }`} />
+
+                    {/* Bottom label */}
+                    {!isTopLabel && (
+                      <span className={`absolute -bottom-8 font-serif font-bold text-base sm:text-lg whitespace-nowrap transition-colors ${
+                        isPassed ? 'text-[#3A201C]' : 'text-[#8A6A62]/60'
+                      }`}>
+                        {step}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Bottom Row: Estimated Arrival & OTP Box */}
+          <div className="flex flex-wrap justify-between items-end gap-6 pt-6 mt-6">
+            {/* Estimated Arrival Box */}
+            <div className="bg-[#FAF2EA] border border-[#E8D7C8] rounded-2xl px-6 py-3.5 shadow-xs">
+              <p className="text-[10px] font-bold tracking-wider text-[#8A6A62] uppercase mb-1">
+                Estimated Arrival
+              </p>
+              <p className="font-serif font-black text-2xl text-[#3A201C] leading-none">
+                ASAP
+              </p>
+            </div>
+
+            {/* OTP Box & Status text */}
+            <div className="flex flex-col items-end">
+              <p className="text-xs text-[#7A5B53] font-medium mb-2 text-right">
+                Your order is currently {activeOrder.status?.toLowerCase() || 'in progress'}
+              </p>
+              {activeOrder.otp && (
+                <div className="bg-[#D7EBDC] border-2 border-[#A2D3AC] rounded-2xl px-8 py-3 text-center min-w-[190px] shadow-xs">
+                  <p className="text-[11px] font-bold text-[#3B7A4E] tracking-wider uppercase mb-0.5">
+                    Your Delivery OTP
+                  </p>
+                  <p className="text-3xl font-black text-[#2A7541] font-mono tracking-widest leading-none">
+                    {activeOrder.otp}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.section>
+  );
+};
+
+const ActiveRequestsSection = ({ requests = [], activeOrders = [], onCancel }) => {
+  let activeList = [];
+
+  activeOrders.forEach((o) => {
+    const mealImg = o.imageUrl || (o.mealId && typeof o.mealId === 'object' ? (o.mealId.image || o.mealId.imageUrl) : null) || o.cookingProofImageUrl || null;
+    activeList.push({
+      id: o._id,
+      dishName: o.dishName,
+      cookName: o.sellerName || 'Dayscholar Cook',
+      time: o.createdAt ? new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+      eta: o.status === 'Accepted' ? '20 min' : null,
+      status: o.status || 'Accepted',
+      image: mealImg || '/cravyo_hero_thali.png'
+    });
+  });
+  requests.forEach((r) => {
+    activeList.push({
+      id: r._id,
+      dishName: r.dishName,
+      cookName: 'Custom Request',
+      time: r.neededBy || 'ASAP',
+      eta: null,
+      status: 'Pending',
+      image: r.imageUrl || '/lunchbox.png'
+    });
+  });
+
+  return (
+    <motion.div variants={itemVariants} className="bg-[#FFF6EF] border border-[#F0D5C5] rounded-[28px] p-6 lg:p-7 shadow-sm text-left">
+      {/* Header */}
+      <div className="flex justify-between items-center pb-4 border-b border-[#F0D5C5]/70 mb-5">
+        <div className="flex items-center gap-2.5">
+          <FiClock className="w-5 h-5 text-[#D04545]" />
+          <h3 className="font-serif font-bold text-2xl text-[#3A201C]">
+            Active Requests
+          </h3>
+        </div>
+        <span className="border border-[#E0A8A0] text-[#7A3F3F] text-xs font-semibold px-3 py-0.5 rounded-full bg-white/50">
+          {activeList.length} total
+        </span>
+      </div>
+
+      {/* List / Empty State */}
+      {activeList.length === 0 ? (
+        <div className="py-12 px-4 text-center bg-[#FBF0E6]/60 border border-dashed border-[#EED7C7] rounded-2xl flex flex-col items-center justify-center gap-2">
+          <FiClock className="w-8 h-8 text-[#8A6A62]/40" />
+          <p className="text-base font-bold text-[#3A201C]">No active requests</p>
+          <p className="text-xs text-[#8A6A62] max-w-xs">Custom meal requests and in-progress orders will appear here once placed.</p>
+        </div>
+      ) : (
+        <div className="space-y-3.5">
+          {activeList.map((item, idx) => (
+            <div 
+              key={item.id || idx}
+              className="bg-[#FBF0E6] border border-[#EED7C7] rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4"
+            >
+              <div className="flex items-center gap-3.5">
+                <img 
+                  src={item.image || '/cravyo_hero_thali.png'} 
+                  alt={item.dishName} 
+                  className="w-14 h-14 rounded-xl object-cover shadow-xs border border-[#EAD0BE] bg-white shrink-0"
+                  onError={(e) => { e.target.src = '/hero-meal.png'; }}
+                />
+                <div>
+                  <h4 className="font-serif font-bold text-base text-[#3A201C] leading-tight">
+                    {item.dishName}
+                  </h4>
+                  <p className="text-xs text-[#8A6A62] font-semibold mt-0.5">
+                    {item.cookName} • 🕒 {item.time}
+                  </p>
+                  {/* Progress bar */}
+                  <div className="h-1.5 w-32 sm:w-44 bg-gradient-to-r from-[#D07060] to-[#E8C0B0] rounded-full mt-2" />
+                  {item.eta && (
+                    <p className="text-[11px] text-[#8A6A62] font-medium mt-1">
+                      ETA: {item.eta}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <span className={`text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider border ${
+                  item.status === 'Accepted' 
+                    ? 'bg-[#FCEAE8] border-[#F3B8B2] text-[#D04545]'
+                    : item.status === 'Pending'
+                    ? 'bg-[#FEF5E7] border-[#FCDAA8] text-[#C98420]'
+                    : 'bg-[#EAF6ED] border-[#BBE3C8] text-[#34965C]'
+                }`}>
+                  {item.status}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 };
 
-const OrderHistory = ({ orders, myReviews, onRateOrder }) => (
-  <motion.div variants={itemVariants} className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
-    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
-      <h3 className="text-xl font-serif font-black text-espresso flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-lg text-primary"><FiClock /></div> Past Orders</h3>
-    </div>
-    {orders.length === 0 ? <p className="text-gray-400">Your history is empty.</p> :
-    <ul className="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-      {orders.map((order, idx) => {
-        const isDelivered = order.status === 'Delivered';
-        const review = myReviews.find(r => r.orderId === order._id);
-        const alreadyReviewed = !!review;
+const PastRequestsSection = ({ orders = [], myReviews = [], onRateOrder, onReorder, orderingMealId }) => {
+  let pastList = [];
 
-        return (
-          <motion.li key={order._id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-gray-50 border border-gray-100 rounded-2xl gap-4 text-left">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center text-xl font-black text-gray-300">
-                #{order._id.substring(order._id.length - 4)}
+  if (orders.length > 0) {
+    pastList = orders.map((o) => {
+      const review = myReviews.find(r => r.orderId === o._id);
+      const mealImg = o.imageUrl || (o.mealId && typeof o.mealId === 'object' ? (o.mealId.image || o.mealId.imageUrl) : null) || o.handoverProofImageUrl || o.cookingProofImageUrl || null;
+      return {
+        id: o._id,
+        mealId: o.mealId?._id || o.mealId,
+        sellerId: o.sellerId,
+        dishName: o.dishName,
+        title: o.dishName,
+        cookName: o.sellerName || 'Dayscholar Chef',
+        date: o.createdAt ? new Date(o.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Recent',
+        price: o.price,
+        rating: review ? `${review.rating}/5` : null,
+        status: o.status === 'Declined' ? 'Canceled' : o.status,
+        image: mealImg || '/lunchbox.png'
+      };
+    });
+  }
+
+  return (
+    <motion.div variants={itemVariants} className="bg-[#FFF6EF] border border-[#F0D5C5] rounded-[28px] p-6 lg:p-7 shadow-sm text-left">
+      {/* Header */}
+      <div className="flex justify-between items-center pb-4 border-b border-[#F0D5C5]/70 mb-5">
+        <div className="flex items-center gap-2.5">
+          <FiClock className="w-5 h-5 text-[#D04545]" />
+          <h3 className="font-serif font-bold text-2xl text-[#3A201C]">
+            Past Requests
+          </h3>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="border border-[#E0A8A0] text-[#7A3F3F] text-xs font-semibold px-3 py-0.5 rounded-full bg-white/50">
+            {pastList.length} total
+          </span>
+          <Link to="/track-orders" className="text-[#C94747] font-bold text-xs hover:underline">
+            View all
+          </Link>
+        </div>
+      </div>
+
+      {/* List / Empty State */}
+      {pastList.length === 0 ? (
+        <div className="py-12 px-4 text-center bg-[#FBF0E6]/60 border border-dashed border-[#EED7C7] rounded-2xl flex flex-col items-center justify-center gap-2">
+          <FiPackage className="w-8 h-8 text-[#8A6A62]/40" />
+          <p className="text-base font-bold text-[#3A201C]">No past requests yet</p>
+          <p className="text-xs text-[#8A6A62] max-w-xs">Delivered and completed orders will appear here for easy reordering and rating.</p>
+        </div>
+      ) : (
+        <div className="space-y-3.5">
+          {pastList.map((item, idx) => {
+            const isReorderingThis = orderingMealId === item.id;
+            return (
+            <div 
+              key={item.id || idx}
+              className="bg-[#FBF0E6] border border-[#EED7C7] rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4"
+            >
+              <div className="flex items-center gap-3.5">
+                <img 
+                  src={item.image || '/lunchbox.png'} 
+                  alt={item.dishName} 
+                  className="w-14 h-14 rounded-xl object-cover shadow-xs border border-[#EAD0BE] bg-white shrink-0"
+                  onError={(e) => { e.target.src = '/hero-meal.png'; }}
+                />
+                <div>
+                  <h4 className="font-serif font-bold text-base text-[#3A201C] leading-tight">
+                    {item.dishName}
+                  </h4>
+                  <p className="text-xs text-[#8A6A62] font-semibold mt-0.5">
+                    {item.cookName} • 📅 {item.date}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="font-black text-[#A82B2B] text-sm">
+                      ₹{item.price}
+                    </span>
+                    {item.rating && (
+                      <span className="text-xs font-bold text-[#8A6A62] flex items-center gap-0.5">
+                        <FiStar className="w-3.5 h-3.5 fill-[#E5A83B] text-[#E5A83B]" /> {item.rating}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="font-black text-lg text-espresso">{order.dishName}</p>
-                <p className="text-sm font-bold text-espresso-light/60">{new Date(order.createdAt).toLocaleDateString()}</p>
+
+              <div className="flex flex-col items-end gap-2">
+                <span className={`text-[11px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider border ${
+                  item.status === 'Delivered'
+                    ? 'bg-[#EAF6ED] border-[#BBE3C8] text-[#34965C]'
+                    : 'bg-[#FDECEC] border-[#F7BABA] text-[#D84545]'
+                }`}>
+                  {item.status}
+                </span>
+                {item.status === 'Delivered' && (
+                  <button 
+                    onClick={() => onReorder && onReorder(item)}
+                    disabled={isReorderingThis}
+                    className="bg-white border border-[#E5A8A8] disabled:opacity-75 disabled:cursor-not-allowed text-[#9E3F3F] font-semibold text-xs px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-xs hover:bg-[#FFF0F0] cursor-pointer transition-colors"
+                  >
+                    {isReorderingThis ? (
+                      <>
+                        <FiLoader className="w-3 h-3 animate-spin" />
+                        <span>Reordering...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FiRepeat className="w-3 h-3" />
+                        <span>Reorder</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-4 mt-4 sm:mt-0 w-full sm:w-auto justify-between sm:justify-end">
-               <div className="flex items-center gap-3">
-                 <span className="font-black text-espresso text-xl">₹{order.price}</span>
-                 <span className={`text-xs font-black py-1.5 px-3 uppercase tracking-widest rounded-lg ${order.status === 'Declined' ? 'bg-red-100 text-red-600' : 'bg-primary/10 text-primary'}`}>
-                    {order.status}
-                 </span>
-               </div>
-               
-               {isDelivered && (
-                 alreadyReviewed ? (
-                   <span className="flex items-center text-secondary font-bold bg-secondary/10 px-3 py-1.5 rounded-lg text-xs border border-secondary/20 gap-1">
-                     <FiStar className="fill-current w-3.5 h-3.5" /> Reviewed ({review.rating}★)
-                   </span>
-                 ) : (
-                   <button 
-                     onClick={() => onRateOrder(order)}
-                     className="text-xs font-black text-white bg-secondary hover:bg-secondary/80 px-4 py-2 rounded-xl transition-all shadow-md cursor-pointer"
-                   >
-                     Rate Order 🌟
-                   </button>
-                 )
-               )}
-            </div>
-          </motion.li>
-        )
-      })}
-    </ul>}
-  </motion.div>
-);
-
-const PromoCard = () => (
-    <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }} className="bg-gradient-to-br from-primary to-primary-hover p-8 rounded-[2rem] shadow-xl text-white relative overflow-hidden text-left">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-[40px]"></div>
-        <FiTrendingUp className="w-8 h-8 text-white/80 mb-4" />
-        <h3 className="text-2xl font-serif font-black mb-2 leading-tight">Earn Free Meals!</h3>
-        <p className="text-white/90 font-medium leading-relaxed mb-6">Refer a day-scholar to join Cravyo, and get ₹150 off your next order.</p>
-        <button className="w-full bg-white text-primary font-black py-3 rounded-xl shadow-md hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer">Get Invite Link</button>
+            );
+          })}
+        </div>
+      )}
     </motion.div>
-);
+  );
+};
 
 export default HostelerDashboard;

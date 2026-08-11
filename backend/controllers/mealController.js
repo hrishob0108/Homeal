@@ -1,22 +1,23 @@
 const Meal = require("../models/Meal");
+const { getCollegeRoom, escapeRegex } = require("../utils/collegeHelper");
 
-// @desc    Fetch all active meals
+// @desc    Fetch all active meals strictly scoped by college
 // @route   GET /api/meals
-// @access  Public
+// @access  Public / Protected
 const getMeals = async (req, res) => {
   try {
-    const college = req.query.collegeName || (req.user && req.user.collegeName);
-    let filter = {};
+    const rawCollege = req.query.collegeName || (req.user && req.user.collegeName) || "";
+    const college = String(rawCollege).trim();
 
-    if (college) {
-      filter = {
-        $or: [
-          { collegeName: college },
-          { collegeName: "" },
-          { collegeName: { $exists: false } }
-        ]
-      };
+    // If no college specified or user has not completed college onboarding,
+    // return an empty array to prevent cross-campus data leaks
+    if (!college) {
+      return res.status(200).json([]);
     }
+
+    const filter = {
+      collegeName: { $regex: new RegExp("^" + escapeRegex(college) + "$", "i") }
+    };
 
     const meals = await Meal.find(filter).sort({ createdAt: -1 });
     res.status(200).json(meals);
@@ -36,6 +37,11 @@ const createMeal = async (req, res) => {
       return res.status(403).json({ message: "Only dayscholars can post meals." });
     }
 
+    const userCollege = (req.user.collegeName || "").trim();
+    if (!userCollege) {
+      return res.status(400).json({ message: "Please complete your college onboarding before posting meals." });
+    }
+
     const newMeal = new Meal({
       title,
       description,
@@ -44,14 +50,21 @@ const createMeal = async (req, res) => {
       tag,
       isVeg: isVeg !== undefined ? isVeg : true,
       cookName: req.user.name,
-      collegeName: req.user.collegeName || "",
+      collegeName: userCollege,
       createdBy: req.user._id,
     });
 
     const savedMeal = await newMeal.save();
+
+    // Emit only to the specific college's Socket.IO room
     if (req.io) {
-      req.io.emit('new_meal_posted', savedMeal);
+      const collegeRoom = getCollegeRoom(userCollege);
+      if (collegeRoom) {
+        console.log(`[MealController] Emitting new_meal_posted to college room: ${collegeRoom}`);
+        req.io.to(collegeRoom).emit('new_meal_posted', savedMeal);
+      }
     }
+
     res.status(201).json(savedMeal);
   } catch (err) {
     res.status(500).json({ message: "Error creating meal", error: err.message });
@@ -72,9 +85,15 @@ const updateMeal = async (req, res) => {
     }
 
     meal = await Meal.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true });
+    
+    // Broadcast update only to the college room
     if (req.io) {
-      req.io.emit('meal_updated', meal);
+      const collegeRoom = getCollegeRoom(meal.collegeName);
+      if (collegeRoom) {
+        req.io.to(collegeRoom).emit('meal_updated', meal);
+      }
     }
+
     res.status(200).json(meal);
   } catch (err) {
     res.status(500).json({ message: "Error updating meal", error: err.message });
@@ -93,10 +112,17 @@ const deleteMeal = async (req, res) => {
        return res.status(401).json({ message: "Not authorized to delete this meal" });
     }
 
+    const collegeName = meal.collegeName;
     await Meal.findByIdAndDelete(req.params.id);
+
+    // Broadcast deletion only to the college room
     if (req.io) {
-      req.io.emit('meal_deleted', { id: req.params.id });
+      const collegeRoom = getCollegeRoom(collegeName);
+      if (collegeRoom) {
+        req.io.to(collegeRoom).emit('meal_deleted', { id: req.params.id });
+      }
     }
+
     res.status(200).json({ message: "Meal removed" });
   } catch (err) {
     res.status(500).json({ message: "Error deleting meal", error: err.message });

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiLock, FiShield, FiCheckCircle, FiArrowRight } from "react-icons/fi";
+import { FiLock, FiShield, FiCheckCircle, FiArrowRight, FiLoader } from "react-icons/fi";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -18,6 +18,7 @@ const ResetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -29,8 +30,11 @@ const ResetPassword = () => {
       setError("Passwords do not match");
     } else {
       setError("");
-      setSuccess(true);
-      console.log("Reset password API call will go here");
+      setIsLoading(true);
+      setTimeout(() => {
+        setIsLoading(false);
+        setSuccess(true);
+      }, 700);
     }
   };
 
@@ -121,12 +125,20 @@ const ResetPassword = () => {
               {error && <p className="text-red-500 text-sm mt-1 ml-1 font-bold">{error}</p>}
 
               <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: isLoading ? 1 : 1.02, y: isLoading ? 0 : -2 }}
+                whileTap={{ scale: isLoading ? 1 : 0.98 }}
                 type="submit"
-                className="w-full bg-primary hover:bg-primary-hover mt-2 py-4 rounded-2xl text-white font-black text-lg shadow-[0_12px_24px_rgba(168,68,68,0.15)] hover:shadow-[0_12px_24px_rgba(168,68,68,0.25)] transition-all duration-300 cursor-pointer"
+                disabled={isLoading}
+                className="w-full bg-primary hover:bg-primary-hover disabled:opacity-75 disabled:cursor-not-allowed mt-2 py-4 rounded-2xl text-white font-black text-lg shadow-[0_12px_24px_rgba(168,68,68,0.15)] hover:shadow-[0_12px_24px_rgba(168,68,68,0.25)] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
               >
-                Save New Password
+                {isLoading ? (
+                  <>
+                    <FiLoader className="w-5 h-5 animate-spin text-white" />
+                    <span>Saving Password...</span>
+                  </>
+                ) : (
+                  <span>Save New Password</span>
+                )}
               </motion.button>
             </motion.form>
           )}

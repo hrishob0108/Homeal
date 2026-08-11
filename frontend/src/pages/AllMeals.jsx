@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import RequestFoodModal from '../components/RequestFoodModal';
+import defaultMealImage from '../assets/image.png';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -36,7 +37,10 @@ const AllMeals = () => {
 
   const fetchMeals = async () => {
     try {
-      const resMeals = await api.get('/meals');
+      const userCollege = (user?.collegeName || "").trim();
+      const resMeals = await api.get('/meals', {
+        params: userCollege ? { collegeName: userCollege } : {}
+      });
       setMeals(resMeals.data);
 
       const cookIds = [...new Set(resMeals.data.map(m => m.createdBy))];
@@ -74,6 +78,7 @@ const AllMeals = () => {
         sellerId: targetSellerId,
         dishName: selectedMealForOrder.title,
         price: selectedMealForOrder.price,
+        imageUrl: selectedMealForOrder.image || selectedMealForOrder.imageUrl || '',
         quantity: orderQuantity,
         notes: notes
       });
@@ -95,8 +100,6 @@ const AllMeals = () => {
 
   return (
     <div className="bg-[#FFF0DD] min-h-screen font-sans relative overflow-x-hidden text-espresso pb-12">
-      <div className="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-primary/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
-      <div className="fixed bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-secondary/15 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
       {/* Simple Header */}
       <div className="fixed top-6 left-0 right-0 z-50 flex justify-center w-full px-6 md:px-12 pointer-events-none">
@@ -113,7 +116,7 @@ const AllMeals = () => {
             >
               <FiArrowLeft className="w-5 h-5" /> Back to Dashboard
             </button>
-            <h1 className="text-2xl font-serif font-black text-[#8C3F3F] tracking-wider hidden sm:block">Homeal</h1>
+            <h1 className="text-2xl font-serif font-black text-[#8C3F3F] tracking-wider hidden sm:block">Craavyo</h1>
             <div className="w-[120px]"></div> {/* Spacer for balance */}
           </div>
         </motion.header>
@@ -123,9 +126,14 @@ const AllMeals = () => {
         <motion.div variants={containerVariants} initial="hidden" animate="visible">
           
           <div className="mb-10 text-center">
-            <h2 className="text-[48px] font-serif text-[#4D2B2B] leading-none mb-6">
+            <h2 className="text-[48px] font-serif text-[#4D2B2B] leading-none mb-3">
               All Available Meals
             </h2>
+            {user?.collegeName && (
+              <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#8C3F3F]/10 text-[#8C3F3F] text-sm font-semibold mb-6 border border-[#8C3F3F]/20 shadow-xs">
+                🎓 Campus: {user.collegeName}
+              </div>
+            )}
             
             {/* Sleek Filter Tags row */}
             <div className="flex flex-wrap justify-center gap-[16px] font-sans">
@@ -157,15 +165,15 @@ const AllMeals = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-[24px] justify-items-center">
               {filteredMeals.map((meal) => (
-                <div key={meal._id} className="min-w-[240px] w-full max-w-[280px] bg-[#F4DCD0] rounded-xl shadow-md border border-[#E3C2B1] flex flex-col relative text-left group cursor-pointer transition-transform duration-300 hover:-translate-y-1">
+                <div key={meal._id} className="min-w-[240px] w-full max-w-[280px] bg-[#E7082F]/[0.12] backdrop-blur-md rounded-[15px] shadow-sm border border-[#E7082F]/30 flex flex-col relative text-left group cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-[#E7082F]/50 overflow-hidden">
                   
                   {/* Image Section */}
-                  <div className="relative h-[180px] w-full bg-gray-200 overflow-hidden rounded-t-xl">
-                    <img src={meal.image || '/src/assets/image.png'} alt={meal.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
+                  <div className="relative h-[180px] w-full bg-[#E7082F]/5 overflow-hidden rounded-t-[15px]">
+                    <img src={meal.image || defaultMealImage} alt={meal.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
                     
                     {/* Tags (Bestseller, Spicy) */}
                     {meal.tag && (
-                      <div className={`absolute top-0 right-0 text-white font-bold text-[11px] px-3 py-1 rounded-bl-xl shadow-sm ${meal.tag === 'Spicy' ? 'bg-[#DF3747]' : meal.tag === 'New' ? 'bg-[#964751]' : 'bg-[#C48C5E]'}`}>
+                      <div className={`absolute top-0 right-0 text-white font-bold text-[11px] px-3 py-1 rounded-bl-[12px] shadow-sm ${meal.tag === 'Spicy' ? 'bg-[#DF3747]' : meal.tag === 'New' ? 'bg-[#964751]' : 'bg-[#C48C5E]'}`}>
                         {meal.tag}
                       </div>
                     )}
@@ -178,22 +186,31 @@ const AllMeals = () => {
                   </div>
 
                   {/* Content Section */}
-                  <div className="px-4 py-3 flex flex-col flex-1 justify-between">
+                  <div className="px-4 py-3.5 flex flex-col flex-1 justify-between">
                     <div>
                       <h4 className="font-serif font-bold text-[22px] text-[#412121] leading-tight mb-1 truncate">{meal.title}</h4>
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-[13px] text-[#694A42]">By <span className="font-bold text-[#412121]">{meal.cookName || 'Unknown'}</span></span>
-                        <span className="bg-[#E2CEBF] text-[#91674E] text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
-                          <FiStar className="w-3 h-3 text-[#DFA460] fill-current" /> {cookStats[meal.createdBy]?.averageRating > 0 ? cookStats[meal.createdBy].averageRating.toFixed(1) : '4.8'}<span className="text-[#91674E]/70 font-medium text-[10px]">({cookStats[meal.createdBy]?.totalReviews || 126})</span>
+                        <span className="bg-white/80 backdrop-blur-sm border border-[#E7082F]/15 text-[#8C3F3F] text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                          {cookStats[meal.createdBy]?.totalReviews > 0 ? (
+                            <>
+                              <FiStar className="w-3 h-3 text-[#DFA460] fill-current" /> {cookStats[meal.createdBy].averageRating.toFixed(1)}
+                              <span className="text-[#8C3F3F]/70 font-medium text-[10px]">({cookStats[meal.createdBy].totalReviews})</span>
+                            </>
+                          ) : (
+                            <span className="text-[#8C3F3F] font-semibold text-[10px] flex items-center gap-0.5">
+                              <span className="text-[#DFA460]">✨</span> New Cook
+                            </span>
+                          )}
                         </span>
                       </div>
                     </div>
                     
-                    <div className="flex justify-between items-center pt-2 border-t border-[#E6CDBC]">
-                      <span className="font-sans font-bold text-[20px] text-[#692E31]">₹{meal.price}</span>
+                    <div className="flex justify-between items-center pt-2.5 border-t border-[#E7082F]/20">
+                      <span className="font-sans font-bold text-[20px] text-[#8C3F3F]">₹{meal.price}</span>
                       <button 
                         onClick={() => handleOrder(meal)}
-                        className="bg-[#5B292D] hover:bg-[#431D1F] text-white font-medium text-[13px] px-3 py-1.5 rounded-md transition-colors shadow-sm cursor-pointer"
+                        className="bg-[#8C3F3F] hover:bg-[#6E3030] text-white font-medium text-[13px] px-3.5 py-1.5 rounded-[10px] transition-colors shadow-xs hover:shadow-sm cursor-pointer"
                       >
                         Order +
                       </button>

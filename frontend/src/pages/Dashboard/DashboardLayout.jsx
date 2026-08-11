@@ -9,7 +9,7 @@ const DashboardLayout = ({ children }) => {
   return (
     <div className="flex h-screen bg-gray-900 text-white">
       <aside className="w-64 bg-gray-800 p-4">
-        <h1 className="text-2xl font-bold mb-6">🍱 Cravyo</h1>
+        <h1 className="text-2xl font-bold mb-6">🍱 Craavyo</h1>
         <nav className="space-y-4">
           {navItems.map((item) => (
             <button
