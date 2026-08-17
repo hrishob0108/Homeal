@@ -36,6 +36,7 @@ const HostelerDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [orderingMealId, setOrderingMealId] = useState(null);
+  const [selectedProofUrl, setSelectedProofUrl] = useState(null);
   
   const user = JSON.parse(sessionStorage.getItem('currentUser'));
 
@@ -693,7 +694,7 @@ const HostelerStatsSection = ({ myOrders = [], myReviews = [] }) => {
         </div>
 
         {/* Right 2x2 Stats Grid - In front on top (z-10) */}
-        <div className="md:col-span-6 grid grid-cols-2 gap-3.5 lg:gap-5 text-left -ml-0 sm:-ml-4 lg:-ml-12 xl:-ml-20 relative z-10">
+        <div className="md:col-span-6 grid grid-cols-2 gap-x-3.5 gap-y-8 lg:gap-x-5 lg:gap-y-10 text-left -ml-0 sm:-ml-4 lg:-ml-12 xl:-ml-20 relative z-10 -mt-6 lg:-mt-8">
           {stats.map((stat) => (
             <motion.div
               key={stat.id}
@@ -705,7 +706,7 @@ const HostelerStatsSection = ({ myOrders = [], myReviews = [] }) => {
                 {stat.icon}
               </div>
               <div>
-                <h3 className="font-serif font-black text-4xl lg:text-[44px] text-[#3B2520] leading-none mb-1.5 tracking-tight">
+                <h3 className="font-serif font-bold text-[48px] text-[#3B2520] leading-none mb-1.5 tracking-normal">
                   {stat.value}
                 </h3>
                 <p className="font-sans font-semibold text-[15px] lg:text-[16px] text-[#5A3B34]">
@@ -721,6 +722,8 @@ const HostelerStatsSection = ({ myOrders = [], myReviews = [] }) => {
 };
 
 const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
+  const [selectedProofUrl, setSelectedProofUrl] = useState(null);
+
   if (!activeOrder) return null;
 
   const steps = ['Pending', 'Accepted', 'Preparing', 'Out for Delivery'];
@@ -729,11 +732,11 @@ const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
 
   return (
     <motion.section variants={itemVariants} className="my-10 w-full text-left">
-      <div className="bg-[#D79A98] rounded-[32px] p-6 lg:p-8 shadow-sm border border-[#C68583]">
+      <div className="bg-[#e69894] rounded-[32px] p-6 lg:p-8 shadow-sm border border-[#e69894]">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-[#FFF0DD]/70 flex items-center justify-center text-[#4A2020] shadow-xs">
+            <div className="w-11 h-11 rounded-2xl bg-[#FDF4F2] flex items-center justify-center text-[#DB4444] shadow-xs">
               <FiPackage className="w-6 h-6 stroke-[2.2]" />
             </div>
             <h2 className="font-serif font-black text-2xl lg:text-3xl text-[#341818] tracking-tight">
@@ -742,7 +745,7 @@ const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
           </div>
           <Link 
             to="/track-orders" 
-            className="w-10 h-10 rounded-xl bg-[#FFF0DD]/80 hover:bg-[#FFF0DD] text-[#341818] flex items-center justify-center transition-all shadow-xs cursor-pointer"
+            className="w-10 h-10 rounded-xl bg-[#FDF4F2] hover:bg-[#FDF4F2]/90 text-[#341818] flex items-center justify-center transition-all shadow-xs cursor-pointer"
             title="Track all orders"
           >
             <FiArrowRight className="w-5 h-5 stroke-[2.5]" />
@@ -750,21 +753,18 @@ const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
         </div>
 
         {/* Alert Banner */}
-        <div className="bg-[#F8E2DC]/85 border border-[#E9C3BC] rounded-2xl py-3 px-5 flex items-center justify-center gap-2.5 text-center text-[#5E3633] text-sm font-semibold mt-5 mb-6 shadow-xs">
+        <div className="bg-[#F1D8D1] border border-[#E8C4BB] rounded-2xl py-3 px-5 flex items-center justify-center gap-2.5 text-center text-[#4A2020] text-sm font-semibold mt-5 mb-6 shadow-xs">
           <FiAlertTriangle className="w-4 h-4 text-[#C98420] shrink-0" />
           <span>Tracking most recent order. Click the arrow to track all active orders</span>
         </div>
 
         {/* Main Timeline Card */}
-        <div className="bg-[#F6ECE0] rounded-[26px] p-6 lg:p-8 relative border border-[#EBD6C3] shadow-xs">
+        <div className="bg-[#F3E3DF] rounded-[26px] p-6 lg:p-8 relative border border-[#F3E3DF] shadow-xs">
           {/* Top Dish Info & Cook Proof */}
           <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
             {/* Left Dish Info */}
-            <div className="relative">
-              <div className="inline-block bg-[#D2EBD9] text-[#2F7D4E] border border-[#B5DEC0] text-[11px] font-bold px-3 py-0.5 rounded-full mb-2">
-                Arriving Today
-              </div>
-              <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-[#EBD8C8] min-w-[220px] flex items-center gap-3.5">
+            <div className="relative inline-block mt-3">
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-[#EBD8C8] min-w-[220px] flex items-center gap-3.5 relative z-0">
                 {(activeOrder.imageUrl || (activeOrder.mealId && (activeOrder.mealId.image || activeOrder.mealId.imageUrl))) && (
                   <img 
                     src={activeOrder.imageUrl || activeOrder.mealId?.image || activeOrder.mealId?.imageUrl} 
@@ -782,24 +782,11 @@ const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
                   </p>
                 </div>
               </div>
+              <div className="absolute -top-3 -right-4 bg-[#C6E4BC] text-[#1A6318] border-[1.5px] border-[#7DBE6C] px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap z-10 shadow-sm">
+                Arriving Today
+              </div>
             </div>
 
-            {/* Cooking Proof image above Preparing step */}
-            {activeOrder.cookingProofImageUrl && (
-              <div className="flex flex-col items-center sm:mr-32 md:mr-44 lg:mr-56">
-                <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-md border-2 border-white bg-white">
-                  <img 
-                    src={activeOrder.cookingProofImageUrl} 
-                    alt="Cook proof" 
-                    className="w-full h-full object-cover"
-                    onError={(e) => { e.target.src = '/hero-meal.png'; }}
-                  />
-                </div>
-                <span className="bg-[#E99696] text-[#6A1C1C] text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-[#D97C7C] -mt-2.5 shadow-xs z-10">
-                  Cooking Proof
-                </span>
-              </div>
-            )}
           </div>
 
           {/* 4-Step Stepper with Alternating Labels */}
@@ -830,9 +817,30 @@ const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
                     )}
 
                     {/* Step Dot */}
-                    <div className={`w-5 h-5 rounded-full ring-4 ring-[#F6ECE0] transition-all ${
+                    <div className={`w-5 h-5 rounded-full ring-4 ring-[#F3E3DF] transition-all ${
                       isPassed ? 'bg-[#5E2B2B] scale-110 shadow-xs' : 'bg-[#D0B8A8]'
                     }`} />
+
+                    {/* Cooking proof popup above Preparing */}
+                    {step === 'Preparing' && activeOrder.cookingProofImageUrl && (
+                      <button 
+                        onClick={() => setSelectedProofUrl(activeOrder.cookingProofImageUrl)}
+                        className="absolute -top-24 sm:-top-28 flex flex-col items-center cursor-pointer hover:scale-105 transition-transform z-20 border-none bg-transparent p-0"
+                        title="Click to view cooking proof"
+                      >
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shadow-md border-2 border-white bg-white">
+                          <img 
+                            src={activeOrder.cookingProofImageUrl} 
+                            alt="Cook proof" 
+                            className="w-full h-full object-cover"
+                            onError={(e) => { e.target.src = '/hero-meal.png'; }}
+                          />
+                        </div>
+                        <span className="bg-[#E99696] text-[#6A1C1C] text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-[#D97C7C] -mt-2.5 shadow-xs z-10 whitespace-nowrap">
+                          Cooking Proof
+                        </span>
+                      </button>
+                    )}
 
                     {/* Bottom label */}
                     {!isTopLabel && (
@@ -851,11 +859,11 @@ const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
           {/* Bottom Row: Estimated Arrival & OTP Box */}
           <div className="flex flex-wrap justify-between items-end gap-6 pt-6 mt-6">
             {/* Estimated Arrival Box */}
-            <div className="bg-[#FAF2EA] border border-[#E8D7C8] rounded-2xl px-6 py-3.5 shadow-xs">
+            <div className="bg-[#F4EBE8] border border-[#F4EBE8] rounded-2xl px-6 py-3.5 shadow-xs min-w-[200px] sm:min-w-[260px]">
               <p className="text-[10px] font-bold tracking-wider text-[#8A6A62] uppercase mb-1">
                 Estimated Arrival
               </p>
-              <p className="font-serif font-black text-2xl text-[#3A201C] leading-none">
+              <p className="font-serif font-black text-xl sm:text-2xl text-[#3A201C] leading-none text-center mt-2">
                 ASAP
               </p>
             </div>
@@ -866,11 +874,11 @@ const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
                 Your order is currently {activeOrder.status?.toLowerCase() || 'in progress'}
               </p>
               {activeOrder.otp && (
-                <div className="bg-[#D7EBDC] border-2 border-[#A2D3AC] rounded-2xl px-8 py-3 text-center min-w-[190px] shadow-xs">
-                  <p className="text-[11px] font-bold text-[#3B7A4E] tracking-wider uppercase mb-0.5">
+                <div className="bg-[#C6E2BA] border border-[#89B673] rounded-2xl px-8 py-3 text-center min-w-[190px] shadow-xs">
+                  <p className="text-[11px] font-bold text-[#1B6114] tracking-wider uppercase mb-0.5">
                     Your Delivery OTP
                   </p>
-                  <p className="text-3xl font-black text-[#2A7541] font-mono tracking-widest leading-none">
+                  <p className="text-3xl font-black text-[#1B6114] font-mono tracking-widest leading-none">
                     {activeOrder.otp}
                   </p>
                 </div>
@@ -879,6 +887,40 @@ const TrackOrderHero = ({ activeOrder, activeOrdersCount }) => {
           </div>
         </div>
       </div>
+
+      {/* Proof Modal */}
+      <AnimatePresence>
+        {selectedProofUrl && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedProofUrl(null)}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative max-w-xl w-full flex flex-col items-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <button 
+                onClick={() => setSelectedProofUrl(null)}
+                className="absolute -top-12 right-0 md:-right-12 text-white/70 hover:text-white p-2 transition-colors"
+              >
+                <FiX className="w-8 h-8" />
+              </button>
+              <img 
+                src={selectedProofUrl} 
+                alt="Cooking Proof" 
+                className="w-full h-auto max-h-[75vh] object-contain rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-[6px] border-[#F6ECE0] bg-white"
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </motion.section>
   );
 };
@@ -1101,6 +1143,7 @@ const PastRequestsSection = ({ orders = [], myReviews = [], onRateOrder, onReord
           })}
         </div>
       )}
+
     </motion.div>
   );
 };
