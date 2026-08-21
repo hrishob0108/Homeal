@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FiBell, FiCheckCircle, FiStar, FiMapPin, FiClock, FiTruck, FiZap, FiMenu, FiSmile, FiLogOut, FiEdit2, FiTrash2, FiX, FiImage, FiLink, FiUpload, FiArrowRight, FiLoader
+import {
+  FiBell, FiCheckCircle, FiStar, FiMapPin, FiClock, FiTruck, FiZap, FiMenu, FiSmile, FiLogOut, FiEdit2, FiTrash2, FiX, FiImage, FiLink, FiUpload, FiArrowRight, FiLoader, FiHome, FiSearch, FiChevronRight, FiAward,
+  FiChevronDown, FiTrendingUp, FiArrowUpRight, FiBarChart2, FiBox, FiHeart, FiCheckSquare, FiClipboard
 } from 'react-icons/fi';
 import { FaRupeeSign, FaFire } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
@@ -35,11 +36,14 @@ const DayscholarDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [isPostDishModalOpen, setIsPostDishModalOpen] = useState(false);
+  const [postDishForm, setPostDishForm] = useState({ title: '', price: '', image: '', tag: 'New', isVeg: true });
+  const [isPublishing, setIsPublishing] = useState(false);
   
   const user = JSON.parse(sessionStorage.getItem('currentUser'));
-  
+
   useEffect(() => {
-    if(!user || !user.token) {
+    if (!user || !user.token) {
       navigate('/login');
       return;
     }
@@ -188,7 +192,7 @@ const DayscholarDashboard = () => {
     try {
       const payload = { status: newStatus };
       const res = await api.put(`/orders/${orderId}/status`, payload);
-      if(res.status === 200) {
+      if (res.status === 200) {
         toast.success(`Order marked as ${newStatus}`);
         fetchDashboardData();
       } else {
@@ -201,15 +205,37 @@ const DayscholarDashboard = () => {
     }
   };
 
-  const handleUploadProof = async (orderId, type, otp = "") => {
+  const handlePublish = async (e) => {
+     e.preventDefault();
+     if(!postDishForm.title || !postDishForm.price) return toast.error("Title and Price are required.");
+     
+     setIsPublishing(true);
+     try {
+       const res = await api.post('/meals', postDishForm);
+       if(res.status === 200 || res.status === 201) {
+          toast.success("Dish Published seamlessly!");
+          setIsPostDishModalOpen(false);
+          setPostDishForm({ title: '', price: '', image: '', tag: 'New', isVeg: true });
+          fetchDashboardData();
+       } else {
+          toast.error("Failed to post dish.");
+       }
+     } catch (err) {
+        toast.error("Network error. Is the server running?");
+     } finally {
+        setIsPublishing(false);
+     }
+  };
+
+  const handleUploadProof = async (orderId, type, otp = "", fallbackUrl = "") => {
     setActionLoadingId(`proof_${orderId}_${type}`);
     try {
-      const localUrl = localUploads[`${orderId}_${type}`];
+      const localUrl = localUploads[`${orderId}_${type}`] || fallbackUrl;
       if (!localUrl) {
         toast.error("No image uploaded yet.");
         return;
       }
-      
+
       let payload = {};
       if (type === 'cooking') {
         payload = { status: 'Preparing', cookingProofImageUrl: localUrl };
@@ -223,7 +249,7 @@ const DayscholarDashboard = () => {
 
       const res = await api.put(`/orders/${orderId}/status`, payload);
 
-      if(res.status === 200) {
+      if (res.status === 200) {
         toast.success(type === 'cooking' ? "Cooking Proof uploaded!" : "Delivery complete!");
         setLocalUploads(prev => {
           const copy = { ...prev };
@@ -244,253 +270,343 @@ const DayscholarDashboard = () => {
   const newRequests = requests.filter(r => r.status === 'Pending');
   const activeDeliveries = requests.filter(r => ['Accepted', 'Preparing', 'Out for Delivery'].includes(r.status));
   const completedCount = requests.filter(r => r.status === 'Delivered').length;
+  const pendingOrders = requests.filter(r => r.status === 'Pending');
+  const recentDeliveries = requests.filter(r => r.status === 'Delivered' || r.status === 'Declined').sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
+
   const earnings = requests.filter(r => r.status === 'Delivered').reduce((acc, curr) => acc + curr.price, 0);
 
   const stats = [
-    { title: 'Completed Orders', value: completedCount, icon: <FiCheckCircle className="text-green-500" />, color: 'green' },
-    { title: 'Rating', value: ratingStats.totalReviews > 0 ? `${ratingStats.averageRating.toFixed(1)} (${ratingStats.totalReviews})` : 'New Cook', icon: <FiStar className="text-yellow-500" />, color: 'yellow' },
-    { title: 'Earnings', value: `₹${earnings}`, icon: <FaRupeeSign className="text-emerald-500" />, color: 'emerald' },
-    { title: 'Active Orders', value: activeDeliveries.length, icon: <FaFire className="text-secondary" />, color: 'secondary' },
+    {
+      title: 'Total earned',
+      value: `₹${earnings}`,
+      icon: <FaRupeeSign className="text-[#279B37] w-6 h-6" />,
+      bg: 'bg-[#C6E5B3]/60',
+      border: 'border-[#8FCB78]'
+    },
+    {
+      title: 'Deliveries',
+      value: completedCount,
+      icon: <FiTruck className="text-[#D94F52] w-6 h-6" />,
+      bg: 'bg-[#F8C1C3]/60',
+      border: 'border-[#E5888C]'
+    },
+    {
+      title: 'Your rating',
+      value: ratingStats.totalReviews > 0 ? ratingStats.averageRating.toFixed(1) : 'New',
+      icon: <FiStar className="text-[#DF9D34] w-6 h-6" />,
+      bg: 'bg-[#F9D6A0]/60',
+      border: 'border-[#EBB365]'
+    },
+    {
+      title: 'Trust score',
+      value: '98%',
+      icon: <FiAward className="text-[#9D4BCA] w-6 h-6" />,
+      bg: 'bg-[#D6B5E8]/60',
+      border: 'border-[#B785D4]'
+    },
   ];
 
   return (
-    <div className="bg-[#FFF0DD] min-h-screen font-sans relative overflow-x-hidden text-espresso pb-12">
+    <div className="bg-[#FFF0DD] min-h-screen font-sans relative overflow-x-hidden text-[#431619] pb-12">
 
       <Header user={user} navigate={navigate} notifications={notifications} setNotifications={setNotifications} isNotifOpen={isNotifOpen} setIsNotifOpen={setIsNotifOpen} />
 
-      <main className="relative z-10 pt-28 px-4 sm:px-6 lg:px-12 max-w-7xl mx-auto">
+      <main className="relative z-10 pt-[140px] px-4 sm:px-6 lg:px-12 max-w-[1440px] mx-auto">
         <motion.div variants={containerVariants} initial="hidden" animate="visible">
-          <WelcomeBanner user={user} />
-          <StatsGrid stats={stats} />
-          
-          <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
-              <NewFoodRequests 
-                requests={newRequests} 
-                onUpdateStatus={handleUpdateStatus} 
+          <WelcomeBanner user={user} onOpenPostDish={() => setIsPostDishModalOpen(true)} />
+
+          <div className="mt-[80px]">
+            <CustomFoodRequestsFeed
+              requests={customRequests}
+              onAccept={handleAcceptRequest}
+              actionLoadingId={actionLoadingId}
+            />
+          </div>
+
+          <div className="mt-50">
+            <StatsGrid stats={stats} />
+          </div>
+
+          <div className="-mt-10 lg:-mt-[120px] mb-16 lg:mb-24 relative z-20">
+            <EarningsAndQuickActions />
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-7 flex flex-col gap-8" id="live-requests-section">
+              <OrderRequests
+                requests={pendingOrders}
+                onUpdateStatus={handleUpdateStatus}
                 actionLoadingId={actionLoadingId}
               />
-              <CustomFoodRequestsFeed 
-                requests={customRequests} 
-                onAccept={handleAcceptRequest} 
-                actionLoadingId={actionLoadingId}
-              />
-              <ActiveDeliveries 
-                deliveries={activeDeliveries} 
-                wid={wid} 
-                localUploads={localUploads} 
-                onUpdateStatus={handleUpdateStatus} 
-                onUploadProof={handleUploadProof} 
-                activeOrderIdRef={activeOrderIdRef} 
-                otpInputs={otpInputs} 
-                setOtpInputs={setOtpInputs} 
+              
+              <ActiveDeliveries
+                deliveries={activeDeliveries}
+                wid={wid}
+                localUploads={localUploads}
+                onUpdateStatus={handleUpdateStatus}
+                onUploadProof={handleUploadProof}
+                activeOrderIdRef={activeOrderIdRef}
+                otpInputs={otpInputs}
+                setOtpInputs={setOtpInputs}
                 actionLoadingId={actionLoadingId}
               />
             </div>
-            <div className="space-y-8">
-              <QuickActions />
-              <TodaysMenu menu={myMenu} user={user} fetchDashboardData={fetchDashboardData} />
+            
+            <div className="lg:col-span-5 flex flex-col gap-8" id="post-dish-section">
+              <RecentDeliveries deliveries={recentDeliveries} />
+              
+              <TodaysMenu menu={myMenu} fetchDashboardData={fetchDashboardData} />
+              
               <RecentReviews reviews={reviews} />
             </div>
           </div>
         </motion.div>
       </main>
+
+      <PostDishModal 
+        isOpen={isPostDishModalOpen} 
+        onClose={() => setIsPostDishModalOpen(false)} 
+        form={postDishForm} 
+        setForm={setPostDishForm} 
+        onSubmit={handlePublish} 
+        isPublishing={isPublishing} 
+      />
     </div>
   );
 };
 
-const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, setIsNotifOpen }) => {
+const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, setIsNotifOpen, searchQuery, setSearchQuery }) => {
   const handleLogout = () => {
     sessionStorage.removeItem('currentUser');
-    toast.success("Logged out successfully");
+    sessionStorage.removeItem('user');
+    localStorage.removeItem('token');
+    toast.success("Successfully logged out");
     navigate('/login');
   };
 
   return (
-    <motion.header 
-      initial={{ y: -100 }} animate={{ y: 0 }} transition={{ type: "spring", stiffness: 100, damping: 20 }}
-      className="fixed top-0 w-full z-50 px-4 sm:px-6 lg:px-12 py-4"
-    >
-      <div className="max-w-7xl mx-auto bg-white/80 backdrop-blur-xl border border-secondary/15 shadow-sm rounded-2xl flex justify-between items-center px-6 py-3">
-        <Link to="/" className="text-2xl font-serif font-black text-espresso tracking-tight flex items-center gap-2">
-          🍱 Craavyo <span className="hidden sm:inline-block text-espresso/45 font-medium text-lg ml-2 border-l border-secondary/35 pl-4">Dayscholar Hub</span>
-        </Link>
-        <div className="flex items-center space-x-4 sm:space-x-6">
-          <div className="relative">
-            <motion.button 
-              whileHover={{ scale: 1.05 }} 
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 hover:text-secondary relative flex items-center justify-center border border-gray-100 cursor-pointer"
-            >
-              <FiBell className="w-5 h-5"/>
-              {notifications && notifications.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-secondary rounded-full border border-white animate-pulse"></span>
+    <div className="fixed top-6 left-0 right-0 z-50 flex justify-center w-full px-6 md:px-12 pointer-events-none">
+      <motion.header
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ type: "spring", stiffness: 100, damping: 20 }}
+        className="w-full max-w-full h-[90px] bg-[#FFF8F2]/80 backdrop-blur-md border border-[#E8D9CF] rounded-[25px] shadow-md flex items-center px-12 pointer-events-auto"
+      >
+        <div className="flex w-full justify-between items-center h-full relative">
+
+          {/* Left: Logo */}
+          <Link to="/" className="text-[32px] font-serif font-bold text-[#8C3F3F] tracking-tight shrink-0">
+            Craavyo
+          </Link>
+
+          {/* Middle: Search Bar (Exactly Centered) */}
+          <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[500px]">
+            <div className="relative w-full flex items-center bg-white border border-[#E8D9CF] rounded-[999px] px-6 py-3 shadow-sm hover:border-[#C96D6D] transition-colors focus-within:border-[#8C3F3F] focus-within:ring-2 focus-within:ring-[#C96D6D]/20">
+              <FiSearch className="text-[#4D2B2B]/40 mr-3 w-[18px] h-[18px] stroke-[2]" />
+              <input
+                type="text"
+                placeholder="Search Meals, Dishes Or Cuisines..."
+                value={searchQuery}
+                onChange={e => setSearchQuery?.(e.target.value)}
+                className="w-full text-[15px] font-medium bg-transparent focus:outline-none text-[#4D2B2B] placeholder:text-[#4D2B2B]/40 font-sans"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")} className="text-[#4D2B2B]/50 hover:text-[#8C3F3F] transition-colors ml-2 cursor-pointer">
+                  <FiX className="w-[18px] h-[18px] stroke-[2.5]" />
+                </button>
               )}
-            </motion.button>
-            <AnimatePresence>
-              {isNotifOpen && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 15, scale: 0.95 }} 
-                  animate={{ opacity: 1, y: 0, scale: 1 }} 
-                  exit={{ opacity: 0, y: 15, scale: 0.95 }} 
-                  className="absolute right-0 mt-3 w-80 bg-white/95 backdrop-blur-xl border border-secondary/15 shadow-2xl rounded-2xl p-4 z-50 overflow-hidden"
-                >
-                  <div className="flex justify-between items-center pb-2 border-b border-secondary/10 mb-2">
-                    <span className="font-black text-sm text-espresso">Notifications</span>
-                    {notifications && notifications.length > 0 && (
-                      <button onClick={() => setNotifications([])} className="text-[10px] font-black text-secondary hover:text-secondary-hover bg-secondary/10 px-2 py-1 rounded cursor-pointer">Clear All</button>
-                    )}
-                  </div>
-                  <ul className="space-y-2 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
-                    {!notifications || notifications.length === 0 ? (
-                      <li className="text-center py-6 text-xs text-espresso-light/60 font-semibold">No new notifications.</li>
-                    ) : (
-                      notifications.map(n => (
-                        <li key={n.id} className="text-xs font-semibold text-espresso-light p-2.5 bg-cream/40 border border-secondary/5 rounded-lg text-left leading-relaxed">
-                          {n.text}
-                        </li>
-                      ))
-                    )}
-                  </ul>
-                </motion.div>
+            </div>
+          </div>
+          {/* Right: Actions */}
+          <div className="flex items-center space-x-6 shrink-0 z-10">
+
+            {/* Dayscholar Badge */}
+            <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-[999px] border border-[#E8D9CF] bg-white text-[#8C3F3F] hover:bg-[#FFF8F2] transition-colors shadow-sm cursor-pointer max-w-[220px]">
+              <FiHome className="w-4 h-4 text-[#8C3F3F] shrink-0" />
+              <span className="text-[13px] font-bold truncate capitalize">Dayscholar</span>
+            </div>
+
+            {/* Notification Bell */}
+            <div className="relative">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                className="text-[#4D2B2B]/70 hover:text-[#8C3F3F] relative flex items-center justify-center cursor-pointer transition-colors p-2"
+              >
+                <FiBell className="w-6 h-6 stroke-[1.5]" />
+                {notifications && notifications.length > 0 && (
+                  <span className="absolute top-1.5 right-2 w-2.5 h-2.5 bg-[#8C3F3F] rounded-full border-[2px] border-white animate-pulse"></span>
+                )}
+              </motion.button>
+
+              <AnimatePresence>
+                {isNotifOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                    className="absolute right-0 mt-4 w-80 bg-white/95 backdrop-blur-xl border border-primary/10 shadow-2xl rounded-2xl p-4 z-50 overflow-hidden"
+                  >
+                    <div className="flex justify-between items-center pb-2 border-b border-primary/10 mb-2">
+                      <span className="font-black text-sm text-espresso">Notifications</span>
+                      {notifications && notifications.length > 0 && (
+                        <button onClick={() => setNotifications([])} className="text-[10px] font-black text-primary hover:text-primary-hover bg-primary/10 px-2 py-1 rounded cursor-pointer">Clear All</button>
+                      )}
+                    </div>
+                    <ul className="space-y-2 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
+                      {!notifications || notifications.length === 0 ? (
+                        <li className="text-center py-6 text-xs text-espresso-light/60 font-semibold">No new notifications.</li>
+                      ) : (
+                        notifications.map(n => (
+                          <li key={n.id} className="text-xs font-semibold text-espresso-light p-2.5 bg-cream/40 border border-primary/5 rounded-lg text-left leading-relaxed">
+                            {n.text}
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* User Avatar */}
+            <div className="relative group cursor-pointer" onClick={handleLogout} title="Click to Logout">
+              {user?.profilePicture ? (
+                <img src={user.profilePicture} alt="User" className="w-[44px] h-[44px] rounded-full object-cover border border-[#E8D9CF] shadow-sm hover:scale-105 transition-transform duration-300" />
+              ) : (
+                <div className="w-[44px] h-[44px] rounded-full bg-[#FFF5EF] flex items-center justify-center text-[#8C3F3F] font-bold text-lg shadow-sm border border-[#E8D9CF] uppercase overflow-hidden hover:scale-105 transition-transform duration-300">
+                  {user?.name?.[0] || 'D'}
+                </div>
               )}
-            </AnimatePresence>
+              {/* Tooltip for logout */}
+              <div className="absolute top-14 right-0 bg-white shadow-lg rounded-xl px-4 py-2 text-[13px] font-semibold text-[#8C3F3F] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-[#E8D9CF]">
+                Logout
+              </div>
+            </div>
+
           </div>
-          <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-secondary to-secondary-hover flex items-center justify-center text-white font-black text-lg shadow-md uppercase">
-                {user?.name?.[0] || 'D'}
-             </div>
-             <div className="hidden sm:block flex-col text-left max-w-[160px]">
-                <p className="font-bold text-espresso text-sm leading-tight truncate">{user?.name || 'Dayscholar'}</p>
-                <p className="text-xs text-secondary font-semibold truncate">{user?.collegeName || 'Dayscholar'}</p>
-             </div>
-          </div>
-          <motion.button onClick={handleLogout} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-10 h-10 flex flex-shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-500 transition-colors cursor-pointer">
-            <FiLogOut className="w-5 h-5" />
-          </motion.button>
         </div>
-      </div>
-    </motion.header>
+      </motion.header>
+    </div>
   );
 };
 
-const WelcomeBanner = ({ user }) => (
-  <motion.div variants={itemVariants} className="mb-10 text-left">
-    <div className="flex flex-wrap items-center gap-3 mb-2">
-      <h2 className="text-4xl lg:text-5xl font-serif font-black text-espresso tracking-tight">
-        Welcome back, <span className="text-secondary">{user?.name?.split(' ')[0]}! 👋</span>
-      </h2>
-      {user?.collegeName && (
-        <span className="bg-secondary/10 text-secondary border border-secondary/20 text-sm font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-xs">
-          🎓 {user.collegeName}
-        </span>
-      )}
+const WelcomeBanner = ({ user, onOpenPostDish }) => {
+  const firstName = user?.name?.split(' ')[0] || 'Sreenija';
+
+  return (
+    <div className="mb-10 w-full relative bg-[linear-gradient(90deg,#C45257_0%,#D63447_46%,#FADBB0_91%)] rounded-[24px] overflow-hidden flex flex-col md:flex-row shadow-sm min-h-[380px]">
+      {/* Text content left */}
+      <div className="px-8 py-10 md:pl-[56px] md:pr-[20px] md:py-[48px] flex-1 text-left z-10 flex flex-col justify-center">
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <p className="text-white/95 text-sm md:text-[15px] font-medium tracking-wide flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="mt-[2px]">
+              <path d="M8 0L9.8 6.2L16 8L9.8 9.8L8 16L6.2 9.8L0 8L6.2 6.2L8 0Z" fill="white" />
+            </svg>
+            Good Afternoon, {firstName}
+          </p>
+          {user?.collegeName && (
+            <span className="bg-black/20 text-white text-xs font-semibold px-3 py-1 rounded-full backdrop-blur-sm border border-white/20 flex items-center gap-1.5 shadow-sm">
+              🎓 {user.collegeName}
+            </span>
+          )}
+        </div>
+        <h2 className="text-white font-serif text-[40px] md:text-[48px] leading-[1.1] mb-4 font-bold tracking-tight max-w-[480px]">
+          Ready to delight food <br /> lovers, {firstName}?
+        </h2>
+        <p className="text-white/95 font-medium text-[15px] md:text-[16px] mb-8 max-w-[420px] leading-relaxed">
+          Fresh meal requests are waiting nearby. Cook with love and start earning today.
+        </p>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onOpenPostDish}
+            className="bg-white text-[#222] font-semibold px-6 py-2.5 rounded-full text-[15px] flex items-center gap-2 hover:bg-gray-50 transition-colors shadow-sm cursor-pointer"
+          >
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            Post a Dish
+          </button>
+          <Link
+            to="/all-requests"
+            className="bg-transparent border border-white/90 text-white font-medium px-6 py-2.5 rounded-full text-[15px] flex items-center gap-2 hover:bg-white/10 transition-colors"
+          >
+            Browse requests
+            <FiChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+
+      {/* Illustration right */}
+      <div className="hidden md:block absolute right-0 bottom-0 top-0 w-[60%] pointer-events-none z-0">
+        <img
+          src="/pan.png"
+          alt="Cooking pan"
+          className="w-full h-full object-contain object-right scale-140 origin-right translate-x-20 translate-y-8"
+        />
+      </div>
     </div>
-    <p className="text-espresso-light text-lg font-medium">Manage incoming food requests from Hostelers in your college campus.</p>
-  </motion.div>
-);
+  );
+};
 
 const StatsGrid = ({ stats }) => (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
-    {stats.map((stat, index) => {
-      const isBrandColor = stat.color === 'secondary';
-      const bgClass = isBrandColor ? 'bg-secondary/10' : `bg-${stat.color}-50`;
-      const textClass = isBrandColor ? 'text-secondary' : `text-${stat.color}-500`;
+  <motion.section
+    variants={itemVariants}
+    className="w-full overflow-visible"
+  >
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-6 items-center">
+      {/* Left Image Area: In the back (z-0) */}
+      <div className="md:col-span-6 flex justify-start items-center -ml-4 sm:-ml-8 lg:-ml-16 overflow-visible relative z-0">
+        <div className="relative w-full">
+          <img
+            src="/couple-food-transparent.png?v=3"
+            alt="Students exchanging food"
+            className="w-full h-auto object-contain select-none drop-shadow-sm pointer-events-none scale-110 sm:scale-[1.00] origin-left -translate-y-48 translate-x-4 lg:-translate-x-[20px]"
+          />
+        </div>
+      </div>
 
-      return (
-        <motion.div key={index} variants={itemVariants} whileHover={{ scale: 1.02, y: -4 }} className="bg-white/80 backdrop-blur-md border border-white/50 p-6 rounded-3xl shadow-[0_8px_30px_rgba(60,34,34,0.04)] hover:shadow-xl transition-all flex items-center gap-5">
-          <div className={`p-4 rounded-2xl ${bgClass} shadow-inner`}>
-            {React.cloneElement(stat.icon, { className: `w-7 h-7 ${textClass}` })}
-          </div>
-          <div>
-            <p className="text-espresso-light font-semibold text-sm mb-1">{stat.title}</p>
-            <p className="text-3xl font-black text-espresso">{stat.value}</p>
-          </div>
-        </motion.div>
-      );
-    })}
-  </div>
-);
-
-const NewFoodRequests = ({ requests, onUpdateStatus, actionLoadingId }) => (
-  <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgba(60,34,34,0.04)] border border-white/50">
-    <div className="flex justify-between items-center mb-6">
-      <h3 className="text-2xl font-serif font-black text-espresso flex items-center gap-3">
-        <span className="bg-secondary/15 text-secondary text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest ring-1 ring-secondary/20">NEW</span>
-        Live Requests
-      </h3>
-    </div>
-    <div className="space-y-4">
-      {requests.length === 0 ? <p className="text-espresso-light/60 font-medium text-left">No new requests right now. Hang tight!</p> :
-      requests.map((req) => {
-        const isAccepting = actionLoadingId === `status_${req._id}_Accepted`;
-        const isDeclining = actionLoadingId === `status_${req._id}_Declined`;
-        const isActionRunning = isAccepting || isDeclining;
-
-        return (
-        <motion.div key={req._id} whileHover={{ scale: 1.01 }} className="border border-gray-100 p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 bg-white hover:border-secondary transition-colors shadow-sm group text-left">
-          <div className="flex-1">
-            <p className="font-black text-xl text-espresso mb-2">{req.dishName}</p>
-            <div className="space-y-1.5">
-              <p className="text-sm text-espresso-light font-medium flex items-center gap-2">
-                <FiMapPin className="text-espresso-light/40 group-hover:text-secondary" /> By <span className="font-bold">{req.buyerName}</span> @ {req.deliveryLocation}
-              </p>
-              <p className="text-sm text-espresso-light font-medium flex items-center gap-2">
-                <FiClock className="text-espresso-light/40 group-hover:text-secondary" /> Needed by <span className="font-bold">{req.neededBy}</span>
-              </p>
+      {/* Right Cards Grid - In front on top (z-10) */}
+      <div className="md:col-span-6 grid grid-cols-2 gap-x-3.5 gap-y-8 lg:gap-x-5 lg:gap-y-10 text-left -ml-0 sm:-ml-4 lg:-ml-12 xl:-ml-20 relative z-10 -mt-16 lg:-mt-[140px]">
+        {stats.map((stat, index) => (
+          <motion.div
+            key={index}
+            whileHover={{ y: -4, scale: 1.01 }}
+            transition={{ duration: 0.2 }}
+            className="bg-[#F4E0C5] border border-[#C7AD8E] rounded-[24px] p-6 lg:p-7 shadow-[0_6px_16px_rgba(90,50,20,0.08)] hover:shadow-[0_12px_24px_rgba(90,50,20,0.13)] transition-all flex flex-col justify-between min-h-[160px]"
+          >
+            <div className={`w-12 h-12 rounded-[14px] ${stat.bg} ${stat.border} border flex items-center justify-center mb-4 shadow-xs`}>
+              {stat.icon}
             </div>
-          </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <span className="text-xl font-black text-primary bg-primary/10 px-4 py-2 rounded-xl ring-1 ring-primary/20 mr-2">₹{req.price}</span>
-            <motion.button 
-              onClick={() => onUpdateStatus(req._id, 'Accepted')} 
-              disabled={isActionRunning}
-              whileHover={!isActionRunning ? { scale: 1.05 } : {}} 
-              whileTap={!isActionRunning ? { scale: 0.95 } : {}} 
-              className="flex-1 sm:flex-initial px-5 py-2.5 font-black text-white bg-gradient-to-r from-secondary to-secondary-hover rounded-xl shadow-lg shadow-secondary/20 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-            >
-              {isAccepting ? (
-                <>
-                  <FiLoader className="w-4 h-4 animate-spin" />
-                  <span>Accepting...</span>
-                </>
-              ) : (
-                <span>Accept</span>
-              )}
-            </motion.button>
-            <motion.button 
-              onClick={() => onUpdateStatus(req._id, 'Declined')} 
-              disabled={isActionRunning}
-              whileHover={!isActionRunning ? { scale: 1.05 } : {}} 
-              whileTap={!isActionRunning ? { scale: 0.95 } : {}} 
-              className="flex-1 sm:flex-initial px-5 py-2.5 font-bold text-gray-600 bg-gray-100 hover:bg-red-50 hover:text-red-500 rounded-xl cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-            >
-              {isDeclining ? (
-                <>
-                  <FiLoader className="w-4 h-4 animate-spin" />
-                  <span>Declining...</span>
-                </>
-              ) : (
-                <span>Decline</span>
-              )}
-            </motion.button>
-          </div>
-        </motion.div>
-        );
-      })}
+            <div>
+              <p className="font-serif font-bold text-[48px] text-[#3B2520] leading-none mb-1.5 tracking-normal">{stat.value}</p>
+              <p className="text-[#7A5239] font-semibold text-[15px] lg:text-[17px]">{stat.title}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
     </div>
-  </motion.div>
+  </motion.section>
 );
 
-const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUploadProof, activeOrderIdRef, otpInputs, setOtpInputs, actionLoadingId }) => (
-  <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-6 sm:p-8 rounded-[2rem] shadow-[0_8px_30px_rgba(60,34,34,0.04)] border border-white/50">
-    <h3 className="text-2xl font-serif font-black text-espresso flex items-center gap-3 mb-6">
-      <div className="p-2 bg-[#8C3F3F]/10 rounded-xl text-[#8C3F3F]"><FiTruck /></div> Active Deliveries
-    </h3>
-    <div className="space-y-5 text-left">
+const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUploadProof, activeOrderIdRef, otpInputs, setOtpInputs, actionLoadingId }) => {
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  return (
+    <motion.div variants={itemVariants} className="w-full flex flex-col gap-4 text-left border border-[#D66E73]/30 rounded-[24px] p-6 bg-[#FAEEEE] h-full shadow-sm">
+    <div className="flex justify-between items-center pb-4 border-b border-[#D66E73]/30 mb-2">
+      <h3 className="font-serif font-black text-[26px] text-[#5D3234] flex items-center gap-3">
+        <FiTruck className="text-[#BA7650] w-7 h-7 stroke-[2.5]" />
+        Active Deliveries
+      </h3>
+      <span className="text-xs font-bold text-[#D66E73] border border-[#D66E73]/50 rounded-full px-3 py-1 bg-transparent">
+        {deliveries?.length || 0} Live
+      </span>
+    </div>
+    <div className="flex flex-col gap-4">
       {deliveries.length === 0 ? (
-        <p className="text-espresso-light/60 font-medium">You have no active deliveries.</p>
+        <p className="text-[#5D3234]/60 text-sm">You have no active deliveries.</p>
       ) : (
         deliveries.map((delivery) => {
           const isCookingProofLoading = actionLoadingId === `proof_${delivery._id}_cooking`;
@@ -498,155 +614,211 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
           const isHandoverProofLoading = actionLoadingId === `proof_${delivery._id}_handover`;
 
           return (
-          <div key={delivery._id} className="border border-gray-100 bg-white p-5 sm:p-6 rounded-2xl shadow-sm hover:border-[#8C3F3F]/30 transition-all flex flex-col gap-4">
-            
-            {/* Header: Title + Price + Status Badge */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3">
-              <div className="flex items-center gap-3">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8C3F3F] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#8C3F3F]"></span>
+            <div key={delivery._id} className="bg-[#B0464A]/10 border border-[#D66E73]/30 p-5 rounded-[20px] flex flex-col gap-4">
+              
+              <div className="flex justify-between items-start">
+                <div>
+                  <h4 className="font-serif font-bold text-xl text-[#5D3234] flex items-center gap-2 mb-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#D66E73] shrink-0"></span>
+                    {delivery.dishName}
+                  </h4>
+                  <p className="text-[11px] text-[#5D3234]/70 font-medium">
+                    Delivering To <span className="font-bold text-[#5D3234]">{delivery.buyerName}</span>
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold text-[#D66E73] border border-[#D66E73]/50 rounded-full px-3 py-1 whitespace-nowrap">
+                  {delivery.status}
                 </span>
-                <h4 className="font-black text-xl text-espresso">{delivery.dishName}</h4>
-                <span className="text-lg font-black text-[#8C3F3F] bg-[#8C3F3F]/10 px-3 py-1 rounded-xl border border-[#8C3F3F]/20">₹{delivery.price}</span>
               </div>
 
-              <span className="inline-block px-3.5 py-1.5 font-extrabold text-xs uppercase tracking-wider rounded-xl text-amber-700 bg-amber-50 border border-amber-200/80 shadow-xs">
-                {delivery.status}
-              </span>
+              <div className="font-serif font-bold text-xl text-[#5D3234]">
+                ₹{delivery.price}
+              </div>
+
+              <div className="flex flex-col gap-3 mt-1">
+                {/* Step 1: Accepted -> Preparing (Cooking Proof) */}
+                {delivery.status === 'Accepted' && (
+                  <>
+                    {!(localUploads[`${delivery._id}_cooking`] || delivery.cookingProofImageUrl) && (
+                      <button
+                        onClick={() => {
+                          activeOrderIdRef.current = { id: delivery._id, type: 'cooking' };
+                          wid.current?.open();
+                        }}
+                        className="bg-[#FFFAEF] border border-[#BA7650] text-[#BA7650] font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-colors hover:opacity-80 w-fit cursor-pointer"
+                      >
+                        Upload Cooking Proof
+                      </button>
+                    )}
+                    {(localUploads[`${delivery._id}_cooking`] || delivery.cookingProofImageUrl) && (
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={localUploads[`${delivery._id}_cooking`] || delivery.cookingProofImageUrl} 
+                          alt="Cooking" 
+                          onClick={() => setSelectedImage(localUploads[`${delivery._id}_cooking`] || delivery.cookingProofImageUrl)}
+                          className="w-12 h-12 object-cover rounded-xl border border-[#D66E73]/30 cursor-pointer hover:scale-105 transition-transform shrink-0 shadow-sm" 
+                        />
+                        <button
+                          onClick={() => onUploadProof(delivery._id, 'cooking', "", delivery.cookingProofImageUrl)}
+                          disabled={isCookingProofLoading}
+                          className="bg-[#FFFAEF] border border-[#BA7650] text-[#BA7650] font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-colors hover:opacity-80 w-fit cursor-pointer disabled:opacity-75 flex items-center gap-2"
+                        >
+                          {isCookingProofLoading ? <FiLoader className="animate-spin w-3.5 h-3.5" /> : null}
+                          Start Preparing
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Step 2: Preparing -> Out for Delivery */}
+                {delivery.status === 'Preparing' && (
+                  <button
+                    onClick={() => onUpdateStatus(delivery._id, 'Out for Delivery')}
+                    disabled={isOutForDeliveryLoading}
+                    className="bg-[#FFFAEF] border border-[#BA7650] text-[#BA7650] font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-colors hover:opacity-80 w-fit cursor-pointer disabled:opacity-75 flex items-center gap-2"
+                  >
+                    {isOutForDeliveryLoading ? <FiLoader className="animate-spin w-3.5 h-3.5" /> : null}
+                    Mark Out For Delivery 🚀
+                  </button>
+                )}
+
+                {/* Step 3: Out for Delivery -> Delivered (OTP + Handover Proof) */}
+                {delivery.status === 'Out for Delivery' && (
+                  <div className="flex flex-col gap-3">
+                    <input
+                      type="text"
+                      placeholder="Enter 4-Digit OTP"
+                      maxLength={4}
+                      className="w-full text-center tracking-[1em] font-mono text-lg font-bold bg-white/50 border border-[#D66E73]/30 rounded-xl p-2.5 focus:outline-none focus:border-[#D66E73] text-[#5D3234]"
+                      value={otpInputs[delivery._id] || ''}
+                      onChange={(e) => setOtpInputs(prev => ({ ...prev, [delivery._id]: e.target.value.replace(/\D/g, '') }))}
+                    />
+
+                    {!(localUploads[`${delivery._id}_handover`] || delivery.handoverProofImageUrl) ? (
+                      <button
+                        onClick={() => {
+                          activeOrderIdRef.current = { id: delivery._id, type: 'handover' };
+                          wid.current?.open();
+                        }}
+                        className="bg-[#FFFAEF] border border-[#BA7650] text-[#BA7650] font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-colors hover:opacity-80 w-full cursor-pointer"
+                      >
+                        Upload Handover Proof
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={localUploads[`${delivery._id}_handover`] || delivery.handoverProofImageUrl} 
+                          alt="Handover" 
+                          onClick={() => setSelectedImage(localUploads[`${delivery._id}_handover`] || delivery.handoverProofImageUrl)}
+                          className="w-12 h-12 object-cover rounded-xl border border-[#D66E73]/30 cursor-pointer hover:scale-105 transition-transform shrink-0 shadow-sm" 
+                        />
+                        <button
+                          onClick={() => onUploadProof(delivery._id, 'handover', otpInputs[delivery._id], delivery.handoverProofImageUrl)}
+                          disabled={isHandoverProofLoading}
+                          className="bg-[#FFFAEF] border border-[#BA7650] text-[#BA7650] font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-colors hover:opacity-80 w-full cursor-pointer disabled:opacity-75 flex items-center justify-center gap-2"
+                        >
+                          {isHandoverProofLoading ? <FiLoader className="animate-spin w-3.5 h-3.5" /> : <FiCheckSquare className="w-3.5 h-3.5" />} Complete Delivery
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-
-            {/* Delivery Details */}
-            <div className="text-sm font-medium text-espresso-light flex items-center gap-2">
-              <FiMapPin className="text-[#8C3F3F] shrink-0" />
-              <span>Delivering to <strong className="text-espresso">{delivery.buyerName}</strong> @ {delivery.deliveryLocation}</span>
-            </div>
-
-            {/* Step Action Buttons */}
-            <div className="pt-2 flex flex-col items-start gap-4">
-               {/* Step 1: Accepted -> Preparing (Cooking Proof) */}
-               {delivery.status === 'Accepted' && (
-                 <>
-                   {!delivery.cookingProofImageUrl && !localUploads[`${delivery._id}_cooking`] && (
-                     <motion.button
-                       whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                       className="bg-[#8C3F3F]/10 hover:bg-[#8C3F3F] border border-[#8C3F3F]/30 text-[#8C3F3F] hover:text-white font-bold px-5 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-2 text-sm cursor-pointer whitespace-nowrap"
-                       onClick={() => {
-                         activeOrderIdRef.current = { id: delivery._id, type: 'cooking' };
-                         wid.current?.open();
-                       }}
-                     >
-                       <FiZap className="text-amber-500" /> 1. Upload Cooking Proof
-                     </motion.button>
-                   )}
-                   {localUploads[`${delivery._id}_cooking`] && (
-                     <div className="w-full sm:w-64">
-                       <img src={localUploads[`${delivery._id}_cooking`]} alt="Cooking" className="w-full h-40 object-cover rounded-xl border-2 border-[#8C3F3F]/30 mb-2" />
-                       <button 
-                         onClick={() => onUploadProof(delivery._id, 'cooking')} 
-                         disabled={isCookingProofLoading}
-                         className="w-full bg-[#8C3F3F] hover:bg-[#A34B4B] disabled:opacity-75 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl shadow-md cursor-pointer text-sm flex items-center justify-center gap-2"
-                       >
-                          {isCookingProofLoading ? (
-                            <>
-                              <FiLoader className="w-4 h-4 animate-spin" />
-                              <span>Starting...</span>
-                            </>
-                          ) : (
-                            <span>Start Preparing</span>
-                          )}
-                       </button>
-                     </div>
-                   )}
-                 </>
-               )}
-
-               {/* Step 2: Preparing -> Out for Delivery */}
-               {delivery.status === 'Preparing' && (
-                   <motion.button 
-                     onClick={() => onUpdateStatus(delivery._id, 'Out for Delivery')} 
-                     disabled={isOutForDeliveryLoading}
-                     whileHover={!isOutForDeliveryLoading ? { scale: 1.02 } : {}} 
-                     className="bg-[#8C3F3F] hover:bg-[#A34B4B] disabled:opacity-75 disabled:cursor-not-allowed text-white font-bold px-6 py-2.5 rounded-xl cursor-pointer shadow-md text-sm transition-all flex items-center gap-2"
-                   >
-                     {isOutForDeliveryLoading ? (
-                       <>
-                         <FiLoader className="w-4 h-4 animate-spin" />
-                         <span>Updating...</span>
-                       </>
-                     ) : (
-                       <span>Mark Out For Delivery 🚀</span>
-                     )}
-                   </motion.button>
-               )}
-
-               {/* Step 3: Out for Delivery -> Delivered (OTP + Handover Proof) */}
-               {delivery.status === 'Out for Delivery' && (
-                 <div className="bg-amber-50/50 border border-amber-200/80 p-4 rounded-xl w-full max-w-sm">
-                   <p className="font-bold text-gray-800 mb-3 text-sm">Final Step: Handover & OTP Verification</p>
-                   <input 
-                     type="text" 
-                     placeholder="Enter 4-Digit OTP" 
-                     maxLength={4}
-                     className="w-full text-center tracking-[1em] font-mono text-2xl font-black bg-white border-2 border-amber-200 rounded-lg p-3 mb-3 focus:outline-none focus:border-[#8C3F3F]"
-                     value={otpInputs[delivery._id] || ''}
-                     onChange={(e) => setOtpInputs(prev => ({...prev, [delivery._id]: e.target.value.replace(/\D/g,'')}))}
-                   />
-                   
-                   {!localUploads[`${delivery._id}_handover`] ? (
-                     <motion.button
-                       whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                       className="bg-[#8C3F3F] hover:bg-[#A34B4B] text-white font-bold px-4 py-2.5 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 w-full cursor-pointer text-sm"
-                       onClick={() => {
-                         activeOrderIdRef.current = { id: delivery._id, type: 'handover' };
-                         wid.current?.open();
-                       }}
-                     >
-                       <FiZap className="text-amber-300" /> Upload Handover Proof
-                     </motion.button>
-                   ) : (
-                     <div className="w-full">
-                       <img src={localUploads[`${delivery._id}_handover`]} alt="Handover" className="w-full h-32 object-cover rounded-lg border-2 border-[#8C3F3F]/30 mb-2" />
-                       <button 
-                         onClick={() => onUploadProof(delivery._id, 'handover', otpInputs[delivery._id])} 
-                         disabled={isHandoverProofLoading}
-                         className="w-full bg-[#8C3F3F] hover:bg-[#A34B4B] disabled:opacity-75 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-lg shadow-md cursor-pointer flex items-center justify-center gap-2 text-sm"
-                       >
-                          {isHandoverProofLoading ? (
-                            <>
-                              <FiLoader className="w-4 h-4 animate-spin" />
-                              <span>Completing...</span>
-                            </>
-                          ) : (
-                            <>
-                              <FiCheckCircle />
-                              <span>Complete Delivery</span>
-                            </>
-                          )}
-                       </button>
-                     </div>
-                   )}
-                 </div>
-               )}
-            </div>
-          </div>
           );
         })
       )}
     </div>
-  </motion.div>
-);
 
-const QuickActions = () => (
-  <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50">
-    <h3 className="text-xl font-black text-gray-900 flex items-center gap-3 mb-6">
-      <div className="p-2 bg-purple-100 rounded-lg text-purple-600"><FiZap /></div> Quick Actions
-    </h3>
-    <div className="space-y-3">
-      <button onClick={() => toast("Analytics feature coming soon!")} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-between hover:bg-gray-100 transition-colors font-bold text-sm text-gray-700 cursor-pointer">
-        <span className="flex items-center gap-2">📈 View Analytics & Earnings</span>
-        <FiArrowRight />
-      </button>
+    <AnimatePresence>
+      {selectedImage && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setSelectedImage(null)}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#3A201C]/80 backdrop-blur-sm"
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="relative max-w-xl w-full flex flex-col items-center"
+            onClick={e => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-12 right-0 md:-right-12 text-white/70 hover:text-white p-2 transition-colors cursor-pointer"
+            >
+              <FiX className="w-8 h-8" />
+            </button>
+            <img 
+              src={selectedImage} 
+              alt="Proof" 
+              className="w-full h-auto max-h-[75vh] object-contain rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-[6px] border-[#F6ECE0] bg-white"
+            />
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </motion.div>
+  );
+};
+
+const EarningsAndQuickActions = () => (
+  <motion.div variants={itemVariants} className="w-full grid grid-cols-1 md:grid-cols-2 gap-x-8 lg:gap-x-12 gap-y-16">
+    {/* Left Card */}
+    <div className="relative flex items-center justify-end h-[260px] lg:h-[280px] w-full mt-10 md:mt-0">
+      {/* Boy Image */}
+      <img src="/boy.png" alt="Boy holding food" className="absolute -left-4 lg:-left-12 xl:-left-16 bottom-0 h-[105%] lg:h-[115%] object-contain z-20 pointer-events-none drop-shadow-md" />
+
+      {/* Card */}
+      <div className="w-[75%] lg:w-[70%] h-full bg-[#E7082F]/[0.12] border border-[#D66E73] rounded-[28px] shadow-sm p-6 lg:p-7 flex flex-col justify-between relative z-10 ml-auto">
+        <div className="flex justify-between items-start">
+          <button className="flex items-center gap-1.5 border border-[#8B4842] text-[#8B4842] text-[11px] lg:text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider bg-transparent cursor-pointer hover:bg-[#F2C5BE]/20 transition-colors">
+            Today <FiChevronDown className="w-3.5 h-3.5" />
+          </button>
+          <FiTrendingUp className="text-[#2B8E55] w-6 h-6 stroke-[2.5]" />
+        </div>
+
+        <div className="mt-2">
+          <div className="font-serif font-bold text-5xl lg:text-[56px] text-[#42221D] flex items-start gap-1 leading-none">
+            <span className="text-3xl lg:text-4xl mt-1 lg:mt-2">₹</span>275
+          </div>
+          <div className="text-[#2B8E55] text-xs lg:text-sm font-bold flex items-center gap-1.5 mt-3">
+            <FiArrowUpRight className="w-4 h-4 stroke-[3]" /> +18% vs yesterday
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center text-[#9E6E66] text-[11px] lg:text-xs font-bold mt-4 px-1 tracking-widest">
+          <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+        </div>
+      </div>
+    </div>
+
+    {/* Right Card */}
+    <div className="relative flex items-center justify-start h-[260px] lg:h-[280px] w-full mt-10 md:mt-0">
+      {/* Girl Image */}
+      <img src="/girl.png" alt="Girl waving" className="absolute -right-4 lg:-right-8 xl:-right-12 bottom-0 h-[105%] lg:h-[115%] object-contain z-20 pointer-events-none drop-shadow-md" />
+
+      {/* Card */}
+      <div className="w-[75%] lg:w-[70%] h-full bg-[#E7082F]/[0.12] border border-[#D66E73] rounded-[28px] shadow-sm p-6 lg:p-8 flex flex-col justify-center gap-8 relative z-10 mr-auto">
+        <h3 className="font-serif font-black text-3xl lg:text-[32px] text-[#1E110E] flex items-center gap-3">
+          <FiZap className="text-[#BA7650] w-7 h-7 stroke-[2]" /> Quick Actions
+        </h3>
+        <div className="flex flex-col gap-5 text-[#3D221D] font-bold text-sm lg:text-[15px]">
+          <button className="flex items-center gap-4 hover:text-[#8C3F3F] transition-colors text-left bg-transparent border-none p-0 cursor-pointer">
+            <FiBarChart2 className="text-[#BA7650] w-5 h-5 stroke-[2.5]" /> View Analytics & Earnings
+          </button>
+          <button className="flex items-center gap-4 hover:text-[#8C3F3F] transition-colors text-left bg-transparent border-none p-0 cursor-pointer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#BA7650" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z" />
+              <line x1="6" y1="17" x2="18" y2="17" />
+            </svg> Manage Menu
+          </button>
+        </div>
+      </div>
     </div>
   </motion.div>
 );
@@ -715,34 +887,34 @@ const ImageUploadBox = ({ value, onChange, placeholder = "Paste link, upload pho
 
   return (
     <div className="flex flex-col gap-2 w-full text-left" onPaste={handlePaste}>
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        accept="image/*" 
-        className="hidden" 
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        className="hidden"
         onChange={(e) => {
           if (e.target.files && e.target.files[0]) {
             handleFileUpload(e.target.files[0]);
           }
-        }} 
+        }}
       />
 
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <FiLink className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder={placeholder}
             className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary/50 focus:outline-none text-xs bg-white"
-            value={value || ''} 
+            value={value || ''}
             onChange={(e) => onChange(e.target.value)}
           />
         </div>
 
-        <button 
-          type="button" 
+        <button
+          type="button"
           disabled={isUploading}
-          onClick={() => fileInputRef.current?.click()} 
+          onClick={() => fileInputRef.current?.click()}
           className="flex items-center gap-1.5 px-3 py-2 bg-secondary/10 hover:bg-secondary/20 text-secondary font-bold text-xs rounded-lg border border-secondary/20 transition-all cursor-pointer whitespace-nowrap shadow-xs"
           title="Upload from device"
         >
@@ -757,19 +929,19 @@ const ImageUploadBox = ({ value, onChange, placeholder = "Paste link, upload pho
 
       {value && (
         <div className="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-gray-200 w-full">
-          <img 
-            src={value} 
-            alt="Dish Preview" 
-            className="w-12 h-12 rounded-md object-cover border border-gray-200 shadow-xs shrink-0" 
-            onError={(e) => { e.target.src = '/image.png'; }} 
+          <img
+            src={value}
+            alt="Dish Preview"
+            className="w-12 h-12 rounded-md object-cover border border-gray-200 shadow-xs shrink-0"
+            onError={(e) => { e.target.src = '/image.png'; }}
           />
           <div className="flex-1 min-w-0">
             <p className="text-[11px] font-bold text-gray-700 truncate">{value.startsWith('data:') ? 'Pasted Image File' : value}</p>
             <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">✓ Image Ready</span>
           </div>
-          <button 
-            type="button" 
-            onClick={() => onChange('')} 
+          <button
+            type="button"
+            onClick={() => onChange('')}
             className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
             title="Remove image"
           >
@@ -785,294 +957,320 @@ const ImageUploadBox = ({ value, onChange, placeholder = "Paste link, upload pho
   );
 };
 
-const TodaysMenu = ({ menu, user, fetchDashboardData }) => {
-  const [isAdding, setIsAdding] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [form, setForm] = useState({ title: '', price: '', image: '', tag: 'New', isVeg: true });
-  
-  const [editingId, setEditingId] = useState(null);
-  const [isUpdating, setIsUpdating] = useState(false);
+const TodaysMenu = ({ menu, fetchDashboardData }) => {
   const [deletingId, setDeletingId] = useState(null);
-  const [editForm, setEditForm] = useState({ title: '', price: '', image: '', isVeg: true });
-
-  const handlePublish = async (e) => {
-     e.preventDefault();
-     if(!form.title || !form.price) return toast.error("Title and Price are required.");
-     
-     setIsPublishing(true);
-     try {
-       const res = await api.post('/meals', form);
-       if(res.status === 200 || res.status === 201) {
-          toast.success("Dish Published seamlessly!");
-          setIsAdding(false);
-          setForm({ title: '', price: '', image: '', tag: 'New', isVeg: true });
-          fetchDashboardData();
-       } else {
-          toast.error("Failed to post dish.");
-       }
-     } catch (err) {
-        toast.error("Network error. Is the server running?");
-     } finally {
-        setIsPublishing(false);
-     }
-  };
-
-  const handleUpdateItem = async (e, id) => {
-      e.preventDefault();
-      setIsUpdating(true);
-      try {
-        const res = await api.put(`/meals/${id}`, editForm);
-        if(res.status === 200) {
-           toast.success("Meal updated successfully!");
-           setEditingId(null);
-           fetchDashboardData();
-        } else {
-           toast.error("Failed to update meal.");
-        }
-      } catch (err) {
-         toast.error("Network error updating meal.");
-      } finally {
-         setIsUpdating(false);
-      }
-  };
 
   const handleDeleteItem = async (id) => {
-     if(!window.confirm("Are you sure you want to delete this dish?")) return;
-     setDeletingId(id);
-     try {
-       const res = await api.delete(`/meals/${id}`);
-       if(res.status === 200) {
-          toast.success("Meal deleted from menu.");
-          fetchDashboardData();
-       } else {
-          toast.error("Failed to delete meal.");
-       }
-     } catch (err) {
-        toast.error("Network error deleting meal.");
-     } finally {
-        setDeletingId(null);
-     }
+    if (!window.confirm("Are you sure you want to delete this dish?")) return;
+    setDeletingId(id);
+    try {
+      const res = await api.delete(`/meals/${id}`);
+      if (res.status === 200) {
+        toast.success("Meal deleted from menu.");
+        fetchDashboardData();
+      } else {
+        toast.error("Failed to delete meal.");
+      }
+    } catch (err) {
+      toast.error("Network error deleting meal.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
-  <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 relative">
-    <div className="flex justify-between items-center mb-6">
-      <h3 className="text-xl font-black text-gray-900 flex items-center gap-3">
-        <div className="p-2 bg-yellow-100 rounded-lg text-yellow-600"><FiMenu /></div> My Menu
-      </h3>
-      <span className="text-xs font-bold bg-emerald-100 px-2 py-1 rounded-md text-emerald-600">{menu.length} Items</span>
-    </div>
-    {menu.length === 0 ? <p className="text-gray-400">You haven't added any meals yet.</p> : (
-        <ul className="space-y-3 max-h-[340px] overflow-y-auto pr-2 custom-scrollbar">
-        {menu.map((item) => (
-            <motion.li key={item._id} className="relative p-0 bg-gray-50 border border-gray-100 rounded-xl hover:border-gray-200 transition-colors group overflow-hidden">
-               {editingId === item._id ? (
-                  <form onSubmit={e => handleUpdateItem(e, item._id)} className="flex flex-col gap-2.5 p-3.5 bg-indigo-50/50">
-                     <div className="flex items-center gap-2">
-                        <input type="text" className="w-full px-3 py-1.5 text-sm font-bold border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} autoFocus placeholder="Dish title" />
-                        <input type="number" className="w-24 px-3 py-1.5 text-sm font-black text-emerald-600 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} placeholder="Price" />
-                        <button type="submit" disabled={isUpdating} className="bg-indigo-500 disabled:opacity-75 text-white p-2 rounded-lg hover:bg-indigo-600 shadow-sm cursor-pointer flex items-center justify-center">
-                          {isUpdating ? <FiLoader className="w-4 h-4 animate-spin" /> : <FiCheckCircle />}
-                        </button>
-                        <button type="button" disabled={isUpdating} onClick={() => setEditingId(null)} className="bg-gray-200 text-gray-600 p-2 rounded-lg hover:bg-red-100 hover:text-red-500 transition-colors cursor-pointer"><FiX /></button>
-                     </div>
-                     <ImageUploadBox 
-                        value={editForm.image} 
-                        onChange={(img) => setEditForm({...editForm, image: img})} 
-                     />
-                     <div className="flex gap-4 items-center pl-1">
-                        <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-gray-600">
-                           <input type="radio" checked={editForm.isVeg === true} onChange={() => setEditForm({...editForm, isVeg: true})} className="text-emerald-500 focus:ring-emerald-500" /> Veg 🟢
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-gray-600">
-                           <input type="radio" checked={editForm.isVeg === false} onChange={() => setEditForm({...editForm, isVeg: false})} className="text-red-500 focus:ring-red-500" /> Non-Veg 🔴
-                        </label>
-                     </div>
-                  </form>
-               ) : (
-                  <div className="flex justify-between items-center p-3">
-                     <div className="flex items-center gap-3 min-w-0">
-                       {item.image ? (
-                         <img src={item.image} alt={item.title} className="w-10 h-10 rounded-lg object-cover border border-gray-200 shrink-0" onError={(e) => { e.target.src = '/image.png'; }} />
-                       ) : (
-                         <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-sm shrink-0">
-                           🍲
-                         </div>
-                       )}
-                       <div className="min-w-0">
-                         <span className="font-bold text-gray-800 flex items-center gap-1.5 text-sm truncate">
-                           <span>{item.isVeg !== false ? '🟢' : '🔴'}</span>
-                           {item.title}
-                         </span>
-                         {item.tag && <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{item.tag}</span>}
-                       </div>
-                     </div>
-                     <div className="flex items-center gap-3 shrink-0">
-                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-24 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg border border-gray-200 shadow-sm">
-                          <button onClick={() => { setEditingId(item._id); setEditForm({ title: item.title, price: item.price, image: item.image || '', isVeg: item.isVeg !== false }); }} className="text-blue-500 hover:bg-blue-50 p-1.5 rounded-md transition-colors cursor-pointer"><FiEdit2 className="w-4 h-4" /></button>
-                          <div className="w-px h-4 bg-gray-200 mx-1"></div>
-                          <button 
-                            onClick={() => handleDeleteItem(item._id)} 
-                            disabled={deletingId === item._id}
-                            className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            {deletingId === item._id ? <FiLoader className="w-4 h-4 animate-spin" /> : <FiTrash2 className="w-4 h-4" />}
-                          </button>
-                       </div>
-                       <span className="font-black text-emerald-600 bg-emerald-50 ring-1 ring-emerald-200 px-3 py-1 rounded-lg z-10 text-sm">₹{item.price}</span>
-                     </div>
+    <motion.div variants={itemVariants} className="w-full flex flex-col gap-4 text-left border border-[#D66E73]/30 rounded-[24px] p-6 bg-[#FAEEEE] shadow-sm">
+      <div className="flex justify-between items-center pb-4 border-b border-[#D66E73]/30 mb-2">
+        <h3 className="font-serif font-black text-[26px] text-[#5D3234] flex items-center gap-3">
+          <FiMenu className="text-[#BA7650] w-7 h-7 stroke-[2.5]" />
+          My Menu
+        </h3>
+        <span className="text-xs font-bold text-[#D66E73] border border-[#D66E73]/50 rounded-full px-3 py-1 bg-transparent">
+          {menu.length} Items
+        </span>
+      </div>
+
+      {menu.length === 0 ? <p className="text-[#5D3234]/60 text-sm">You haven't added any meals yet.</p> : (
+        <div className="flex flex-col gap-3 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
+          {menu.map((item) => (
+            <motion.div key={item._id} className="relative bg-[#B0464A]/10 border border-[#D66E73]/30 rounded-[20px] p-4 flex flex-col gap-3">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${item.isVeg !== false ? 'bg-[#3DB143]' : 'bg-[#E7082F]'}`}></span>
+                  <div>
+                    <h4 className="font-serif font-bold text-lg text-[#5D3234] leading-none mb-1">{item.title}</h4>
+                    <span className="font-serif font-bold text-sm text-[#E7082F]">₹{item.price}</span>
                   </div>
-               )}
-            </motion.li>
-        ))}
-        </ul>
-    )}
-    
-    <AnimatePresence>
-       {isAdding && (
-          <motion.form 
-            initial={{ opacity: 0, height: 0 }} 
-            animate={{ opacity: 1, height: 'auto' }} 
-            exit={{ opacity: 0, height: 0 }}
-            onSubmit={handlePublish}
-            className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl flex flex-col gap-3 overflow-hidden text-left"
-          >
-             <input type="text" placeholder="Dish Name (e.g. Rajma Chawal, Brownie, Biryani)" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none text-sm bg-white" value={form.title} onChange={e => setForm({...form, title: e.target.value})} autoFocus />
-             
-             <div className="flex gap-2">
-                <input type="number" placeholder="Price (₹)" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none text-sm bg-white" value={form.price} onChange={e => setForm({...form, price: e.target.value})} />
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:outline-none bg-white text-sm" value={form.tag} onChange={e => setForm({...form, tag: e.target.value})}>
-                   <option value="New">New</option>
-                   <option value="Bestseller">Bestseller</option>
-                   <option value="Spicy">Spicy</option>
-                   <option value="Sweet">Sweet</option>
-                </select>
-             </div>
-
-             <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                   <FiImage className="text-secondary" /> Food Photo (Upload, Paste, or Link):
-                </label>
-                <ImageUploadBox 
-                   value={form.image} 
-                   onChange={(img) => setForm({...form, image: img})} 
-                />
-             </div>
-
-             <div className="flex gap-4 items-center px-1">
-                <span className="text-xs font-bold text-gray-500">Type:</span>
-                <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-gray-600">
-                   <input type="radio" checked={form.isVeg === true} onChange={() => setForm({...form, isVeg: true})} className="text-emerald-500 focus:ring-emerald-500" /> Veg 🟢
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-gray-600">
-                   <input type="radio" checked={form.isVeg === false} onChange={() => setForm({...form, isVeg: false})} className="text-red-500 focus:ring-red-500" /> Non-Veg 🔴
-                </label>
-             </div>
-
-             <div className="flex gap-2 mt-1">
-                <button type="button" disabled={isPublishing} onClick={() => setIsAdding(false)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-lg font-bold text-sm cursor-pointer disabled:opacity-50">Cancel</button>
-                <button type="submit" disabled={isPublishing} className="flex-1 bg-secondary hover:bg-secondary-hover text-white py-2 rounded-lg shadow-md font-bold text-sm cursor-pointer shadow-secondary/10 disabled:opacity-75 flex items-center justify-center gap-2">
-                  {isPublishing ? (
-                    <>
-                      <FiLoader className="w-4 h-4 animate-spin" />
-                      <span>Publishing...</span>
-                    </>
-                  ) : (
-                    <span>Publish</span>
-                  )}
-                </button>
-             </div>
-          </motion.form>
-       )}
-    </AnimatePresence>
-
-    {!isAdding && (
-      <button onClick={() => setIsAdding(true)} className="w-full mt-4 text-sm font-bold text-secondary hover:text-secondary-hover transition-colors flex justify-center items-center gap-2 border border-secondary/20 py-3 rounded-xl border-dashed cursor-pointer">
-        + Publish New Dish
-      </button>
-    )}
-  </motion.div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleDeleteItem(item._id)}
+                    disabled={deletingId === item._id}
+                    className="w-8 h-8 flex items-center justify-center border border-[#D66E73]/50 rounded-lg text-[#D66E73] bg-white/30 hover:bg-white transition-colors disabled:opacity-50"
+                  >
+                    {deletingId === item._id ? <FiLoader className="w-3.5 h-3.5 animate-spin" /> : <FiTrash2 className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </motion.div>
   );
 };
 
-const RecentReviews = ({ reviews }) => (
-    <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 relative overflow-hidden text-left">
-        <h3 className="text-xl font-serif font-black flex items-center gap-3 mb-6 text-espresso">
-          <div className="p-2 bg-primary/10 rounded-lg text-primary"><FiSmile /></div> Community Love
-        </h3>
-        {reviews.length === 0 ? (
-          <p className="text-espresso-light/60 font-medium text-sm">No reviews yet. Keep cooking up amazing meals!</p>
-        ) : (
-          <ul className="space-y-4 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
-            {reviews.slice(0, 5).map(review => (
-              <li key={review._id} className="pb-3 border-b border-gray-100 last:border-b-0">
-                <div className="flex justify-between items-start mb-1">
-                  <span className="text-xs font-bold text-espresso-light/50">{review.reviewer?.name || 'Anonymous'}</span>
-                  <span className="flex items-center text-secondary text-xs font-bold bg-secondary/10 px-2 py-0.5 rounded border border-secondary/10">
-                    ★ {review.rating}
-                  </span>
-                </div>
-                <p className="text-espresso-light text-sm font-semibold italic">"{review.comment}"</p>
-              </li>
-            ))}
-          </ul>
-        )}
-    </motion.div>
-);
 
-const CustomFoodRequestsFeed = ({ requests, onAccept, actionLoadingId }) => (
-  <motion.div variants={itemVariants} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgba(60,34,34,0.04)] border border-white/50">
-    <div className="flex justify-between items-center mb-6">
-      <h3 className="text-2xl font-serif font-black text-espresso flex items-center gap-3">
-        <span className="bg-secondary/15 text-secondary text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest ring-1 ring-secondary/20">FEED</span>
-        Custom Requests from Hostelers
+const RecentDeliveries = ({ deliveries }) => (
+  <motion.div variants={itemVariants} className="w-full flex flex-col gap-4 text-left border border-[#D66E73]/30 rounded-[24px] p-6 bg-[#FAEEEE] shadow-sm">
+    <div className="flex justify-between items-center pb-4 border-b border-[#D66E73]/30 mb-2">
+      <h3 className="font-serif font-black text-[26px] text-[#5D3234] flex items-center gap-3">
+        <FiBox className="text-[#BA7650] w-7 h-7 stroke-[2.5]" />
+        Recent Deliveries
       </h3>
+      <span className="text-xs font-bold text-[#D66E73] border border-[#D66E73]/50 rounded-full px-3 py-1 bg-transparent">
+        {deliveries?.length || 3} items
+      </span>
     </div>
-    <div className="space-y-4">
-      {requests.length === 0 ? (
-        <p className="text-espresso-light/60 font-medium text-left">No custom food requests from hostelers right now. Check back soon!</p>
+
+    <div className="flex flex-col gap-3">
+      {deliveries.length === 0 ? (
+        <p className="text-[#5D3234]/60 text-sm">No recent deliveries.</p>
       ) : (
-        requests.map((req) => {
-          const isAccepting = actionLoadingId === `accept_${req._id}`;
-          return (
-          <motion.div key={req._id} whileHover={{ scale: 1.01 }} className="border border-gray-100 p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 bg-white hover:border-secondary transition-colors shadow-sm group text-left">
-            <div className="flex-1">
-              <p className="font-black text-xl text-espresso mb-1">{req.dishName}</p>
-              {req.description && <p className="text-sm text-espresso-light font-medium italic mb-2">"{req.description}"</p>}
-              <div className="space-y-1">
-                <p className="text-sm text-espresso-light font-medium flex items-center gap-2">
-                  <FiMapPin className="text-espresso-light/40 group-hover:text-secondary" /> By <span className="font-bold">{req.buyerName}</span> @ {req.deliveryLocation}
-                </p>
-                <p className="text-sm text-espresso-light font-medium flex items-center gap-2">
-                  <FiClock className="text-espresso-light/40 group-hover:text-secondary" /> Needed by <span className="font-bold">{req.neededBy}</span>
-                </p>
+        deliveries.map((item) => (
+          <div key={item._id} className="flex justify-between items-center bg-[#B0464A]/10 border border-[#D66E73]/20 rounded-[20px] p-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden border border-[#D66E73]/30 shrink-0">
+                <img src={item.imageUrl || '/image.png'} alt={item.dishName} className="w-full h-full object-cover" onError={(e) => { e.target.src = '/image.png'; }} />
+              </div>
+              <div>
+                <h4 className="font-serif font-bold text-base text-[#5D3234] leading-tight mb-0.5">{item.dishName}</h4>
+                <p className="text-[11px] text-[#5D3234]/70 font-medium">Delivered to <span className="font-bold text-[#5D3234]">{item.buyerName}</span></p>
               </div>
             </div>
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
-              <span className="text-xl font-black text-primary bg-primary/10 px-4 py-2 rounded-xl ring-1 ring-primary/20 mr-2">₹{req.price}</span>
-              <motion.button 
-                onClick={() => onAccept(req._id)} 
-                disabled={isAccepting}
-                whileHover={!isAccepting ? { scale: 1.05 } : {}} 
-                whileTap={!isAccepting ? { scale: 0.95 } : {}} 
-                className="px-5 py-2.5 font-black text-white bg-gradient-to-r from-secondary to-secondary-hover rounded-xl shadow-lg hover:shadow-secondary/20 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isAccepting ? (
-                  <>
-                    <FiLoader className="w-4 h-4 animate-spin" />
-                    <span>Accepting...</span>
-                  </>
-                ) : (
-                  <span>Accept &amp; Cook 🍳</span>
-                )}
-              </motion.button>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <span className="font-serif font-bold text-base text-[#E7082F]">₹{item.price}</span>
+              <span className="text-[10px] font-bold text-[#BA7650] bg-white border border-[#BA7650]/50 px-2 py-0.5 rounded-full">{item.status}</span>
             </div>
-          </motion.div>
-          );
-        })
+          </div>
+        ))
       )}
     </div>
   </motion.div>
 );
+
+const RecentReviews = ({ reviews }) => (
+  <motion.div variants={itemVariants} className="w-full flex flex-col gap-4 text-left border border-[#D66E73]/30 rounded-[24px] p-6 bg-[#FAEEEE] h-full shadow-sm">
+    <div className="flex justify-between items-center pb-4 border-b border-[#D66E73]/30 mb-2">
+      <h3 className="font-serif font-black text-[26px] text-[#5D3234] flex items-center gap-3">
+        <FiHeart className="text-[#BA7650] w-7 h-7 stroke-[2.5]" />
+        Community Love
+      </h3>
+      <span className="text-xs font-bold text-[#D66E73] border border-[#D66E73]/50 rounded-full px-3 py-1 bg-transparent">
+        {reviews?.length || 0} items
+      </span>
+    </div>
+    
+    {reviews.length === 0 ? (
+      <p className="text-[#5D3234]/60 text-sm">No reviews yet. Keep cooking up amazing meals!</p>
+    ) : (
+      <div className="flex flex-col gap-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+        {reviews.slice(0, 5).map(review => (
+          <div key={review._id} className="bg-[#B0464A]/10 border border-[#D66E73]/30 rounded-[20px] p-4 flex flex-col gap-2">
+            <div className="flex justify-between items-start">
+              <span className="text-sm font-bold text-[#5D3234]">{review.reviewer?.name || 'Anonymous'}</span>
+              <span className="flex items-center text-[#BA7650] text-xs font-bold bg-white/50 px-2 py-0.5 rounded-full border border-[#BA7650]/30">
+                ★ {review.rating}
+              </span>
+            </div>
+            <p className="text-[#5D3234]/80 text-sm font-medium italic">"{review.comment}"</p>
+          </div>
+        ))}
+      </div>
+    )}
+  </motion.div>
+);
+
+const CustomFoodRequestsFeed = ({ requests, onAccept, actionLoadingId }) => {
+  if (!requests || requests.length === 0) return null;
+
+  return (
+    <div className="w-full flex flex-col gap-5 text-left mb-8">
+      <div className="flex justify-between items-center px-2">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5 bg-[#E78A86] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm">
+            <span className="w-1.5 h-1.5 bg-white rounded-full"></span> Live
+          </span>
+          <h3 className="font-serif text-[28px] text-[#5D3234]">
+            <span className="font-black">Hostellers</span> <span className="font-medium">crave for these</span>
+          </h3>
+        </div>
+        <Link to="/all-requests" className="font-serif font-bold text-lg text-[#5D3234] hover:opacity-70 transition-opacity bg-transparent cursor-pointer border-none">
+          See All
+        </Link>
+      </div>
+
+      <div className="flex gap-5 overflow-x-auto pb-4 custom-scrollbar px-2">
+        {requests.map((req, i) => {
+          // Dummy images array to alternate for styling display
+          const images = ['/paratha.png', '/chicken_curry.png', '/biryani.png', '/image.png'];
+          const imgSource = req.imageUrl || images[i % images.length];
+
+          return (
+            <div key={req._id} className="min-w-[220px] max-w-[220px] bg-[#FCE5E2] border border-[#D66E73]/30 rounded-[20px] flex flex-col shadow-sm shrink-0 overflow-hidden group">
+              <div className="relative h-[160px] w-full shrink-0">
+                <img src={imgSource} alt={req.dishName} className="w-full h-full object-cover rounded-t-[20px]" onError={(e) => { e.target.src = '/image.png'; }} />
+                
+                {/* Veg / Non-Veg Pill */}
+                <div className="absolute bottom-2 left-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-md backdrop-blur-md" 
+                     style={{ backgroundColor: req.isVeg !== false ? '#00A82D' : '#D11A2A' }}>
+                  <span className="w-1 h-1 bg-white rounded-full"></span>
+                  {req.isVeg !== false ? 'Veg' : 'Non-Veg'}
+                </div>
+              </div>
+
+              <div className="p-4 flex flex-col flex-1">
+                <div className="mb-3">
+                  <h4 className="font-serif font-bold text-xl text-[#5D3234] leading-tight mb-1 truncate">{req.dishName}</h4>
+                  <p className="text-[12px] text-[#5D3234]/90 font-bold flex items-center gap-1">
+                    <FiMapPin className="w-3.5 h-3.5 stroke-[2.5]" />
+                    By {req.buyerName || 'Anonymous'}
+                  </p>
+                </div>
+                
+                <div className="mt-auto">
+                  <div className="w-full h-px bg-[#D66E73]/30 mb-3"></div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-serif font-bold text-xl text-[#5D3234]">₹{req.price}</span>
+                    <div className="flex gap-1.5">
+                      <button 
+                        onClick={() => onAccept(req._id)}
+                        disabled={actionLoadingId === `accept_${req._id}`}
+                        className="bg-[#5D3234] hover:bg-[#462527] text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-75 flex items-center justify-center min-w-[56px]"
+                      >
+                        {actionLoadingId === `accept_${req._id}` ? <FiLoader className="w-3 h-3 animate-spin" /> : 'Accept'}
+                      </button>
+                      <button 
+                        onClick={() => toast.error("Declining custom requests is not supported yet.")}
+                        className="bg-transparent border border-[#5D3234] text-[#5D3234] hover:bg-[#5D3234]/10 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const OrderRequests = ({ requests, onUpdateStatus, actionLoadingId }) => (
+  <motion.div variants={itemVariants} className="w-full flex flex-col gap-4 text-left border border-[#D66E73]/30 rounded-[24px] p-6 bg-[#FAEEEE] h-full shadow-sm">
+    <div className="flex justify-between items-center pb-4 border-b border-[#D66E73]/30 mb-2">
+      <h3 className="font-serif font-black text-[26px] text-[#5D3234] flex items-center gap-3">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#BA7650" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z" />
+          <line x1="6" y1="17" x2="18" y2="17" />
+        </svg>
+        Order requests
+      </h3>
+      <span className="text-xs font-bold text-[#D66E73] border border-[#D66E73]/50 rounded-full px-3 py-1 bg-transparent">
+        {requests?.length || 0} items
+      </span>
+    </div>
+
+    <div className="flex flex-col gap-4">
+      {requests.length === 0 ? (
+        <p className="text-[#5D3234]/60 text-sm">No new requests right now.</p>
+      ) : (
+        requests.map((req, i) => (
+          <div key={req._id} className="bg-[#B0464A]/10 border border-[#D66E73]/30 rounded-[20px] p-5 flex flex-col gap-4">
+            <div className="flex justify-between items-start">
+              <div className="flex gap-4">
+                <div className="w-7 h-7 rounded-full bg-[#B25C62] text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-sm">
+                  {i + 1}
+                </div>
+                <div>
+                  <h4 className="font-serif font-bold text-lg text-[#5D3234] leading-tight mb-1">{req.dishName}</h4>
+                  <p className="text-[11px] text-[#5D3234]/70 font-medium">
+                    {req.buyerName || 'Unknown'} • {new Date(req.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    {req.description && <><br/><span className="italic">| "{req.description}"</span></>}
+                  </p>
+                </div>
+              </div>
+              <div className="font-serif font-bold text-xl text-[#E7082F]">
+                ₹{req.price}
+              </div>
+            </div>
+            <div className="flex gap-3 mt-1">
+              <button 
+                onClick={() => onUpdateStatus(req._id, 'Declined')}
+                disabled={actionLoadingId === `status_${req._id}_Declined`}
+                className="flex-1 bg-white/50 border border-[#D66E73]/60 text-[#BA7650] text-xs font-bold rounded-[10px] py-2.5 flex justify-center items-center gap-2 hover:bg-white transition-colors shadow-sm cursor-pointer disabled:opacity-75"
+              >
+                {actionLoadingId === `status_${req._id}_Declined` ? <FiLoader className="w-3.5 h-3.5 animate-spin" /> : <><FiX className="w-3.5 h-3.5" /> Decline</>}
+              </button>
+              <button 
+                onClick={() => onUpdateStatus(req._id, 'Accepted')}
+                disabled={actionLoadingId === `status_${req._id}_Accepted`}
+                className="flex-1 bg-[#B25C62] text-white text-xs font-bold rounded-[10px] py-2.5 flex justify-center items-center gap-2 hover:bg-[#9C4B51] transition-colors shadow-sm disabled:opacity-75 cursor-pointer"
+              >
+                {actionLoadingId === `status_${req._id}_Accepted` ? <FiLoader className="w-4 h-4 animate-spin" /> : <><FiCheckCircle className="w-3.5 h-3.5" /> Accept</>}
+              </button>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  </motion.div>
+);
+
+const PostDishModal = ({ isOpen, onClose, form, setForm, onSubmit, isPublishing }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-[#FCE5E2] border border-[#D66E73]/30 rounded-[24px] p-6 w-full max-w-md shadow-2xl relative">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="font-serif font-black text-2xl text-[#5D3234]">Post a Dish</h3>
+          <button onClick={onClose} className="p-2 bg-white/50 hover:bg-white border border-[#D66E73]/30 rounded-full text-[#5D3234] transition-colors cursor-pointer"><FiX /></button>
+        </div>
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+          <input type="text" placeholder="Dish Name (e.g. Rajma Chawal)" className="w-full px-4 py-3 border border-[#D66E73]/30 rounded-xl focus:ring-2 focus:ring-[#BA7650] focus:outline-none bg-white text-[#5D3234] font-medium" value={form.title} onChange={e => setForm({...form, title: e.target.value})} autoFocus />
+          <div className="flex gap-3">
+             <input type="number" placeholder="Price (₹)" className="w-full px-4 py-3 border border-[#D66E73]/30 rounded-xl focus:ring-2 focus:ring-[#BA7650] focus:outline-none bg-white text-[#5D3234] font-medium" value={form.price} onChange={e => setForm({...form, price: e.target.value})} />
+             <select className="w-full px-4 py-3 border border-[#D66E73]/30 rounded-xl focus:ring-2 focus:ring-[#BA7650] focus:outline-none bg-white text-[#5D3234] font-medium" value={form.tag} onChange={e => setForm({...form, tag: e.target.value})}>
+                <option value="New">New</option>
+                <option value="Bestseller">Bestseller</option>
+                <option value="Spicy">Spicy</option>
+                <option value="Sweet">Sweet</option>
+             </select>
+          </div>
+          <div className="flex flex-col gap-2 bg-white/50 p-3 rounded-xl border border-[#D66E73]/20">
+             <label className="text-sm font-bold text-[#5D3234] flex items-center gap-2">
+                <FiImage className="text-[#BA7650]" /> Food Photo:
+             </label>
+             <ImageUploadBox value={form.image} onChange={(img) => setForm({...form, image: img})} />
+          </div>
+          <div className="flex gap-4 items-center pl-2">
+             <span className="text-sm font-bold text-[#5D3234]">Type:</span>
+             <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-600">
+                <input type="radio" checked={form.isVeg === true} onChange={() => setForm({...form, isVeg: true})} className="accent-[#00A82D] w-4 h-4 cursor-pointer" /> Veg 🟢
+             </label>
+             <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-600">
+                <input type="radio" checked={form.isVeg === false} onChange={() => setForm({...form, isVeg: false})} className="accent-[#D11A2A] w-4 h-4 cursor-pointer" /> Non-Veg 🔴
+             </label>
+          </div>
+          <button type="submit" disabled={isPublishing} className="mt-4 w-full bg-[#B25C62] hover:bg-[#9C4B51] text-white py-3.5 rounded-xl font-bold transition-colors disabled:opacity-75 flex justify-center items-center gap-2 shadow-md cursor-pointer">
+            {isPublishing ? <><FiLoader className="w-5 h-5 animate-spin" /> Publishing...</> : 'Publish Dish'}
+          </button>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
 
 export default DayscholarDashboard;

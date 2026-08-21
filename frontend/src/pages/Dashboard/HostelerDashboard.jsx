@@ -331,7 +331,7 @@ const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, 
           {/* Hosteler & College Badge */}
           <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-[999px] border border-[#E8D9CF] bg-white text-[#8C3F3F] hover:bg-[#FFF8F2] transition-colors shadow-sm cursor-pointer max-w-[220px]">
              <FaGraduationCap className="w-4 h-4 text-[#8C3F3F] shrink-0" />
-             <span className="text-[13px] font-bold truncate">{user?.collegeName || "Hosteler"}</span>
+             <span className="text-[13px] font-bold truncate capitalize">{user?.role || "Hosteler"}</span>
           </div>
 
           {/* Notification Bell */}
@@ -676,7 +676,7 @@ const HostelerStatsSection = ({ myOrders = [], myReviews = [] }) => {
   return (
     <motion.section 
       variants={itemVariants} 
-      className="my-14 w-full overflow-visible"
+      className="mt-14 mb-32 lg:mb-48 w-full overflow-visible"
     >
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-6 items-center">
         {/* Left Illustration: In the back (z-0) */}
@@ -953,9 +953,9 @@ const ActiveRequestsSection = ({ requests = [], activeOrders = [], onCancel }) =
   });
 
   return (
-    <motion.div variants={itemVariants} className="bg-[#FFF6EF] border border-[#F0D5C5] rounded-[28px] p-6 lg:p-7 shadow-sm text-left">
+    <motion.div variants={itemVariants} className="bg-[#FAEEEE] border border-[#D66E73]/30 rounded-[28px] p-6 lg:p-7 shadow-sm text-left">
       {/* Header */}
-      <div className="flex justify-between items-center pb-4 border-b border-[#F0D5C5]/70 mb-5">
+      <div className="flex justify-between items-center pb-4 border-b border-[#D66E73]/30 mb-5">
         <div className="flex items-center gap-2.5">
           <FiClock className="w-5 h-5 text-[#D04545]" />
           <h3 className="font-serif font-bold text-2xl text-[#3A201C]">
@@ -969,7 +969,7 @@ const ActiveRequestsSection = ({ requests = [], activeOrders = [], onCancel }) =
 
       {/* List / Empty State */}
       {activeList.length === 0 ? (
-        <div className="py-12 px-4 text-center bg-[#FBF0E6]/60 border border-dashed border-[#EED7C7] rounded-2xl flex flex-col items-center justify-center gap-2">
+        <div className="py-12 px-4 text-center bg-[#B0464A]/10 border border-dashed border-[#D66E73]/30 rounded-2xl flex flex-col items-center justify-center gap-2">
           <FiClock className="w-8 h-8 text-[#8A6A62]/40" />
           <p className="text-base font-bold text-[#3A201C]">No active requests</p>
           <p className="text-xs text-[#8A6A62] max-w-xs">Custom meal requests and in-progress orders will appear here once placed.</p>
@@ -979,7 +979,7 @@ const ActiveRequestsSection = ({ requests = [], activeOrders = [], onCancel }) =
           {activeList.map((item, idx) => (
             <div 
               key={item.id || idx}
-              className="bg-[#FBF0E6] border border-[#EED7C7] rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4"
+              className="bg-[#B0464A]/10 border border-[#D66E73]/30 rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4"
             >
               <div className="flex items-center gap-3.5">
                 <img 
@@ -1048,9 +1048,9 @@ const PastRequestsSection = ({ orders = [], myReviews = [], onRateOrder, onReord
   }
 
   return (
-    <motion.div variants={itemVariants} className="bg-[#FFF6EF] border border-[#F0D5C5] rounded-[28px] p-6 lg:p-7 shadow-sm text-left">
+    <motion.div variants={itemVariants} className="bg-[#FAEEEE] border border-[#D66E73]/30 rounded-[28px] p-6 lg:p-7 shadow-sm text-left">
       {/* Header */}
-      <div className="flex justify-between items-center pb-4 border-b border-[#F0D5C5]/70 mb-5">
+      <div className="flex justify-between items-center pb-4 border-b border-[#D66E73]/30 mb-5">
         <div className="flex items-center gap-2.5">
           <FiClock className="w-5 h-5 text-[#D04545]" />
           <h3 className="font-serif font-bold text-2xl text-[#3A201C]">
@@ -1069,7 +1069,7 @@ const PastRequestsSection = ({ orders = [], myReviews = [], onRateOrder, onReord
 
       {/* List / Empty State */}
       {pastList.length === 0 ? (
-        <div className="py-12 px-4 text-center bg-[#FBF0E6]/60 border border-dashed border-[#EED7C7] rounded-2xl flex flex-col items-center justify-center gap-2">
+        <div className="py-12 px-4 text-center bg-[#B0464A]/10 border border-dashed border-[#D66E73]/30 rounded-2xl flex flex-col items-center justify-center gap-2">
           <FiPackage className="w-8 h-8 text-[#8A6A62]/40" />
           <p className="text-base font-bold text-[#3A201C]">No past requests yet</p>
           <p className="text-xs text-[#8A6A62] max-w-xs">Delivered and completed orders will appear here for easy reordering and rating.</p>
@@ -1081,7 +1081,7 @@ const PastRequestsSection = ({ orders = [], myReviews = [], onRateOrder, onReord
             return (
             <div 
               key={item.id || idx}
-              className="bg-[#FBF0E6] border border-[#EED7C7] rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4"
+              className="bg-[#B0464A]/10 border border-[#D66E73]/30 rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4"
             >
               <div className="flex items-center gap-3.5">
                 <img 
