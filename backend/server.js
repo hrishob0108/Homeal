@@ -1,4 +1,5 @@
-global.SlowBuffer = require('buffer').SlowBuffer;
+const buffer = require('buffer');
+if (!buffer.SlowBuffer) buffer.SlowBuffer = buffer.Buffer;
 const express = require('express');
 const http = require('http'); // Required for socket.io
 const { Server } = require('socket.io');
