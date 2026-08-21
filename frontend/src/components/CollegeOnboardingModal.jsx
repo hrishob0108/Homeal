@@ -68,20 +68,43 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
     return results;
   }, [searchQuery]);
 
-  // Helper to safely get or create RecaptchaVerifier without duplicate rendering errors
+  // Cleanup recaptcha on unmount
+  useEffect(() => {
+    return () => {
+      if (window.recaptchaVerifier) {
+        try {
+          window.recaptchaVerifier.clear();
+        } catch (e) {}
+        window.recaptchaVerifier = null;
+      }
+    };
+  }, []);
+
+  // Helper to safely get or create RecaptchaVerifier without duplicate rendering or stale DOM node errors
   const getRecaptchaVerifier = () => {
-    if (window.recaptchaVerifier) {
-      return window.recaptchaVerifier;
-    }
     const container = document.getElementById("recaptcha-container");
-    if (container) {
-      container.innerHTML = "";
+    if (!container) {
+      throw new Error("reCAPTCHA container element not found in DOM");
     }
-    window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+
+    if (window.recaptchaVerifier) {
+      try {
+        window.recaptchaVerifier.clear();
+      } catch (e) {}
+      window.recaptchaVerifier = null;
+    }
+    container.innerHTML = "";
+
+    const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
       size: "invisible",
-      callback: () => {}
+      callback: () => {},
+      "expired-callback": () => {
+        toast.error("Verification expired. Please click Send OTP again.");
+      }
     });
-    return window.recaptchaVerifier;
+
+    window.recaptchaVerifier = verifier;
+    return verifier;
   };
 
   // Handle Send Real Mobile SMS OTP via Firebase Auth API with Backend SMS fallback
@@ -123,7 +146,11 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
         window.confirmationResult = null; // Mark as backend-dispatched
         setOtpSent(true);
         setErrorMsg("");
-        toast.success(`OTP generated for +91 ${cleanPhone}! (Check SMS / Backend Console)`, { duration: 8000 });
+        if (res.data?.isRealSms) {
+          toast.success(`Real SMS OTP dispatched to +91 ${cleanPhone}! Check your phone messages.`, { duration: 8000 });
+        } else {
+          toast.success(`OTP generated for +91 ${cleanPhone}! (Check backend console / SMS)`, { duration: 8000 });
+        }
       } catch (backendErr) {
         console.error("Backend OTP Dispatch Error:", backendErr);
         const msg = backendErr.response?.data?.message || "Failed to send SMS OTP. Please check your network or server.";
@@ -266,7 +293,6 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
 
   return (
     <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md overflow-y-auto select-none">
-      <div id="recaptcha-container"></div>
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -305,6 +331,8 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
               </span>
             )}
           </div>
+
+          <div id="recaptcha-container" className="flex justify-center my-1"></div>
 
           {!isPhoneVerified ? (
             <div className="space-y-3">
