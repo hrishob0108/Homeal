@@ -1092,8 +1092,6 @@ const RecentReviews = ({ reviews }) => (
 );
 
 const CustomFoodRequestsFeed = ({ requests, onAccept, actionLoadingId }) => {
-  if (!requests || requests.length === 0) return null;
-
   return (
     <div className="w-full flex flex-col gap-5 text-left mb-8">
       <div className="flex justify-between items-center px-2">
@@ -1110,8 +1108,15 @@ const CustomFoodRequestsFeed = ({ requests, onAccept, actionLoadingId }) => {
         </Link>
       </div>
 
-      <div className="flex gap-5 overflow-x-auto pb-4 custom-scrollbar px-2">
-        {requests.map((req, i) => {
+      {!requests || requests.length === 0 ? (
+        <div className="text-center py-16 px-4 bg-[#FFF5EF] rounded-[22px] border border-[#E8D9CF] border-dashed">
+          <span className="text-5xl mb-4 block animate-bounce-slow">🍳</span>
+          <p className="text-[#5D3234] font-bold text-xl mb-2">Kitchen is quiet</p>
+          <p className="text-[#5D3234]/70 text-[16px] font-medium">No requests available right now. Check back later!</p>
+        </div>
+      ) : (
+        <div className="flex gap-5 overflow-x-auto pb-4 custom-scrollbar px-2">
+          {requests.map((req, i) => {
           // Dummy images array to alternate for styling display
           const images = ['/paratha.png', '/chicken_curry.png', '/biryani.png', '/image.png'];
           const imgSource = req.imageUrl || images[i % images.length];
@@ -1164,6 +1169,7 @@ const CustomFoodRequestsFeed = ({ requests, onAccept, actionLoadingId }) => {
           );
         })}
       </div>
+      )}
     </div>
   );
 };
