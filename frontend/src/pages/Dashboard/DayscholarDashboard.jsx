@@ -519,15 +519,15 @@ const WelcomeBanner = ({ user, onOpenPostDish }) => {
           Fresh meal requests are waiting nearby. Cook with love and start earning today.
         </p>
         <div className="flex items-center gap-4">
-          <button
-            onClick={onOpenPostDish}
+          <Link
+            to="/post-dish"
             className="bg-white text-[#222] font-semibold px-6 py-2.5 rounded-full text-[15px] flex items-center gap-2 hover:bg-gray-50 transition-colors shadow-sm cursor-pointer"
           >
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
             Post a Dish
-          </button>
+          </Link>
           <Link
             to="/all-requests"
             className="bg-transparent border border-white/90 text-white font-medium px-6 py-2.5 rounded-full text-[15px] flex items-center gap-2 hover:bg-white/10 transition-colors"
@@ -1029,7 +1029,7 @@ const RecentDeliveries = ({ deliveries }) => (
         Recent Deliveries
       </h3>
       <span className="text-xs font-bold text-[#D66E73] border border-[#D66E73]/50 rounded-full px-3 py-1 bg-transparent">
-        {deliveries?.length || 3} items
+        {deliveries?.length || 0} items
       </span>
     </div>
 
