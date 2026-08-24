@@ -35,7 +35,7 @@ const ReviewModal = ({ isOpen, onClose, order, onReviewSubmitted }) => {
       setSubmitting(true);
       const res = await api.post('/reviews', {
         reviewedUser: order.sellerId,
-        orderId: order._id,
+        orderId: order._id || order.id,
         meal: order.mealId || null, // Optional for custom requests
         rating,
         comment

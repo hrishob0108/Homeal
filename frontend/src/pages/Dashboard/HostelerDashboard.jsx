@@ -1119,23 +1119,34 @@ const PastRequestsSection = ({ orders = [], myReviews = [], onRateOrder, onReord
                   {item.status}
                 </span>
                 {item.status === 'Delivered' && (
-                  <button 
-                    onClick={() => onReorder && onReorder(item)}
-                    disabled={isReorderingThis}
-                    className="bg-white border border-[#E5A8A8] disabled:opacity-75 disabled:cursor-not-allowed text-[#9E3F3F] font-semibold text-xs px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-xs hover:bg-[#FFF0F0] cursor-pointer transition-colors"
-                  >
-                    {isReorderingThis ? (
-                      <>
-                        <FiLoader className="w-3 h-3 animate-spin" />
-                        <span>Reordering...</span>
-                      </>
-                    ) : (
-                      <>
-                        <FiRepeat className="w-3 h-3" />
-                        <span>Reorder</span>
-                      </>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => onReorder && onReorder(item)}
+                      disabled={isReorderingThis}
+                      className="bg-white border border-[#E5A8A8] disabled:opacity-75 disabled:cursor-not-allowed text-[#9E3F3F] font-semibold text-xs px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-xs hover:bg-[#FFF0F0] cursor-pointer transition-colors"
+                    >
+                      {isReorderingThis ? (
+                        <>
+                          <FiLoader className="w-3 h-3 animate-spin" />
+                          <span>Reordering...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FiRepeat className="w-3 h-3" />
+                          <span>Reorder</span>
+                        </>
+                      )}
+                    </button>
+                    {!item.rating && (
+                      <button 
+                        onClick={() => onRateOrder && onRateOrder(item)}
+                        className="bg-[#BA7650] text-white font-semibold text-xs px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-xs hover:bg-[#A36340] cursor-pointer transition-colors"
+                      >
+                        <FiStar className="w-3 h-3" />
+                        <span>Rate Meal</span>
+                      </button>
                     )}
-                  </button>
+                  </div>
                 )}
               </div>
             </div>

@@ -10,6 +10,7 @@ import DayscholarDashboard from './pages/Dashboard/DayscholarDashboard';
 import HostelerDashboard from './pages/Dashboard/HostelerDashboard';
 import AllMeals from './pages/AllMeals';
 import AllRequests from './pages/AllRequests';
+import PostDish from './pages/PostDish';
 import SelectRole from './pages/SelectRole';
 import TrackOrders from './pages/TrackOrders';
 import CollegeOnboardingModal from './components/CollegeOnboardingModal';
@@ -77,6 +78,7 @@ const App = () => {
       <Route path="/hosteler-dashboard" element={<HostelerDashboard />} />
       <Route path="/all-meals" element={<AllMeals />} />
       <Route path="/all-requests" element={<AllRequests />} />
+      <Route path="/post-dish" element={<PostDish />} />
       <Route path="/track-orders" element={<TrackOrders />} />
 
       {/* Optional backward redirects (if you ever used camelCase before) */}
