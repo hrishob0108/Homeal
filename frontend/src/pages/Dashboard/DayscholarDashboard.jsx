@@ -9,6 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { useSocket } from '../../context/SocketContext';
+import CameraUploadModal from '../../components/CameraUploadModal';
 
 // Animation configs
 const containerVariants = {
@@ -39,6 +40,7 @@ const DayscholarDashboard = () => {
   const [isPostDishModalOpen, setIsPostDishModalOpen] = useState(false);
   const [postDishForm, setPostDishForm] = useState({ title: '', price: '', image: '', tag: 'New', isVeg: true });
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   
   const user = JSON.parse(sessionStorage.getItem('currentUser'));
 
@@ -56,24 +58,6 @@ const DayscholarDashboard = () => {
       return;
     }
     fetchDashboardData();
-
-    // Cloudinary setup
-    let myWidget = window.cloudinary?.createUploadWidget(
-      { cloudName: "dfseckyjx", uploadPreset: "qbvu3y5j", sources: ['camera'] },
-      (error, result) => {
-        if (!error && result && result.event === "success") {
-          const target = activeOrderIdRef.current;
-          if (target && target.id) {
-            setLocalUploads(prev => ({
-              ...prev,
-              [`${target.id}_${target.type}`]: result.info.secure_url
-            }));
-            toast.success(target.type === 'cooking' ? "Cooking Proof Uploaded!" : "Handover Proof Uploaded!");
-          }
-        }
-      }
-    );
-    wid.current = myWidget;
   }, []);
 
   useEffect(() => {
@@ -86,7 +70,6 @@ const DayscholarDashboard = () => {
         { id: Date.now(), text: `New order request for "${newOrder.dishName}" from ${newOrder.buyerName}!` },
         ...prev
       ]);
-      // Update state immediately so UI updates in real-time without delay
       setRequests(prev => {
         if (prev.some(o => o._id === newOrder._id)) {
           return prev.map(o => o._id === newOrder._id ? newOrder : o);
@@ -341,7 +324,6 @@ const DayscholarDashboard = () => {
               
               <ActiveDeliveries
                 deliveries={activeDeliveries}
-                wid={wid}
                 localUploads={localUploads}
                 onUpdateStatus={handleUpdateStatus}
                 onUploadProof={handleUploadProof}
@@ -349,6 +331,7 @@ const DayscholarDashboard = () => {
                 otpInputs={otpInputs}
                 setOtpInputs={setOtpInputs}
                 actionLoadingId={actionLoadingId}
+                setIsCameraModalOpen={setIsCameraModalOpen}
               />
             </div>
             
@@ -370,6 +353,19 @@ const DayscholarDashboard = () => {
         setForm={setPostDishForm} 
         onSubmit={handlePublish} 
         isPublishing={isPublishing} 
+      />
+
+      <CameraUploadModal
+        isOpen={isCameraModalOpen}
+        onClose={() => setIsCameraModalOpen(false)}
+        onUploadComplete={(url) => {
+          const target = activeOrderIdRef.current;
+          if (target && target.id) {
+            setLocalUploads(prev => ({ ...prev, [`${target.id}_${target.type}`]: url }));
+            toast.success(target.type === 'cooking' ? "Cooking Proof Uploaded!" : "Handover Proof Uploaded!");
+          }
+          setIsCameraModalOpen(false);
+        }}
       />
     </div>
   );
@@ -590,7 +586,7 @@ const StatsGrid = ({ stats }) => (
   </motion.section>
 );
 
-const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUploadProof, activeOrderIdRef, otpInputs, setOtpInputs, actionLoadingId }) => {
+const ActiveDeliveries = ({ deliveries, localUploads, onUpdateStatus, onUploadProof, activeOrderIdRef, otpInputs, setOtpInputs, actionLoadingId, setIsCameraModalOpen }) => {
   const [selectedImage, setSelectedImage] = useState(null);
 
   return (
@@ -643,7 +639,7 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
                       <button
                         onClick={() => {
                           activeOrderIdRef.current = { id: delivery._id, type: 'cooking' };
-                          wid.current?.open();
+                          setIsCameraModalOpen(true);
                         }}
                         className="bg-[#FFFAEF] border border-[#BA7650] text-[#BA7650] font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-colors hover:opacity-80 w-fit cursor-pointer"
                       >
@@ -699,7 +695,7 @@ const ActiveDeliveries = ({ deliveries, wid, localUploads, onUpdateStatus, onUpl
                       <button
                         onClick={() => {
                           activeOrderIdRef.current = { id: delivery._id, type: 'handover' };
-                          wid.current?.open();
+                          setIsCameraModalOpen(true);
                         }}
                         className="bg-[#FFFAEF] border border-[#BA7650] text-[#BA7650] font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-colors hover:opacity-80 w-full cursor-pointer"
                       >

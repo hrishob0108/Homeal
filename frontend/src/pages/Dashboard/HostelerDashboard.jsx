@@ -6,7 +6,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { useSocket } from '../../context/SocketContext';
-import RequestFoodModal from '../../components/RequestFoodModal';
 import ReviewModal from '../../components/ReviewModal';
 import defaultMealImage from '../../assets/image.png';
 
@@ -29,7 +28,6 @@ const HostelerDashboard = () => {
   const [myRequests, setMyRequests] = useState([]);
   const [myReviews, setMyReviews] = useState([]);
   const [cookStats, setCookStats] = useState({});
-  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [selectedOrderForReview, setSelectedOrderForReview] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState("All");
@@ -225,7 +223,7 @@ const HostelerDashboard = () => {
 
       <main className="relative z-10 pt-[140px] px-4 sm:px-6 lg:px-12 max-w-[1440px] mx-auto">
         <motion.div variants={containerVariants} initial="hidden" animate="visible">
-          <WelcomeBanner user={user} onRequestCustom={() => setIsRequestModalOpen(true)} />
+          <WelcomeBanner user={user} onRequestCustom={() => navigate('/request-craving')} />
           
           <div className="mt-[80px]">
             <AvailableToday 
@@ -260,14 +258,6 @@ const HostelerDashboard = () => {
           </div>
         </motion.div>
       </main>
-
-      <RequestFoodModal
-        isOpen={isRequestModalOpen}
-        onClose={() => setIsRequestModalOpen(false)}
-        onRequestCreated={(newRequest) => {
-          setMyRequests(prev => [newRequest, ...prev]);
-        }}
-      />
 
       <ReviewModal
         isOpen={!!selectedOrderForReview}

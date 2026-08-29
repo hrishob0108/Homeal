@@ -11,6 +11,7 @@ import HostelerDashboard from './pages/Dashboard/HostelerDashboard';
 import AllMeals from './pages/AllMeals';
 import AllRequests from './pages/AllRequests';
 import PostDish from './pages/PostDish';
+import RequestCraving from './pages/RequestCraving';
 import SelectRole from './pages/SelectRole';
 import TrackOrders from './pages/TrackOrders';
 import CollegeOnboardingModal from './components/CollegeOnboardingModal';
@@ -79,6 +80,7 @@ const App = () => {
       <Route path="/all-meals" element={<AllMeals />} />
       <Route path="/all-requests" element={<AllRequests />} />
       <Route path="/post-dish" element={<PostDish />} />
+      <Route path="/request-craving" element={<RequestCraving />} />
       <Route path="/track-orders" element={<TrackOrders />} />
 
       {/* Optional backward redirects (if you ever used camelCase before) */}
