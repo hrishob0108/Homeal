@@ -11,18 +11,24 @@ const PostDish = () => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
 
+  const timeOptions = [];
+  for (let h = 6; h <= 23; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      if (h === 23 && m === 30) continue;
+      const hour12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const minStr = m === 0 ? '00' : m;
+      timeOptions.push(`${hour12}:${minStr} ${ampm}`);
+    }
+  }
+
   // Form State
   const [tag, setTag] = useState('Breakfast'); // Breakfast or Lunch
   const [title, setTitle] = useState('');
+  const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
   const [isVeg, setIsVeg] = useState(true);
   const [spicyLevel, setSpicyLevel] = useState(1);
-  
-  // Dishes state
-  const [dishes, setDishes] = useState([{ name: 'Rajma Chawal', price: 150, type: 'VEG' }]);
-  const [newDishName, setNewDishName] = useState('');
-  const [newDishPrice, setNewDishPrice] = useState('');
-  const [newDishType, setNewDishType] = useState('VEG');
 
   const [servings, setServings] = useState('');
   const [readyBy, setReadyBy] = useState('');
@@ -74,44 +80,43 @@ const PostDish = () => {
     setNewDishPrice('');
     setNewDishType('VEG');
   };
-
-  const handleRemoveDish = (index) => {
-    setDishes(dishes.filter((_, i) => i !== index));
-  };
-
   const handlePublish = async () => {
-    if (!title || dishes.length === 0 || !servings || !readyBy || !pickupPoint) {
-      toast.error("Please fill in all required fields and add at least one dish.");
+    if (!title || !price || !description || !servings || !readyBy || !pickupPoint) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+    if (!image) {
+      toast.error('Please add a photo of your meal');
       return;
     }
 
-    const totalPrice = dishes.reduce((sum, d) => sum + d.price, 0);
-
     setLoading(true);
+    const toastId = toast.loading('Publishing your menu...');
     try {
       const token = localStorage.getItem('token');
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/meals`,
-        {
-          title,
-          description,
-          price: totalPrice,
-          tag,
-          isVeg,
-          spicyLevel,
-          servings: Number(servings),
-          readyBy,
-          pickupPoint,
-          dishes,
-          image: image || '/default-meal.png'
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      toast.success('Meal published successfully!');
+      const payload = {
+        cookId: user._id,
+        tag,
+        title,
+        price: Number(price),
+        description,
+        isVeg,
+        spicyLevel,
+        servings: Number(servings),
+        readyBy,
+        pickupPoint,
+        image,
+      };
+
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/meals`, payload, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+      
+      toast.success('Meal published successfully!', { id: toastId });
       navigate('/dayscholar-dashboard');
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Failed to publish meal');
+      toast.error(err.response?.data?.message || 'Failed to publish meal', { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -223,65 +228,20 @@ const PostDish = () => {
             </div>
           </div>
 
-          {/* Dishes in this meal */}
-          <div className="mb-8 border-b border-white/10 pb-8">
-            <div className="flex justify-between items-center mb-3">
-              <label className="block text-white text-[15px] font-serif">Dishes in this meal</label>
-              <span className="text-[10px] font-medium border border-white/40 px-2.5 py-0.5 rounded-full text-white/90 bg-white/5">{dishes.length} Item{dishes.length !== 1 && 's'}</span>
-            </div>
-            
-            <div className="space-y-3 mb-4">
-              {dishes.map((dish, idx) => (
-                <div key={idx} className="flex justify-between items-center bg-[#b84e50]/40 border border-white/20 rounded-lg px-4 py-2.5">
-                  <span className="text-[14px] text-white/90">{dish.name}</span>
-                  <div className="flex items-center gap-4">
-                    <span className="text-[13px] font-bold text-white">₹ {dish.price}</span>
-                    <button onClick={() => handleRemoveDish(idx)} className="text-white/70 hover:text-white transition-colors">
-                      <Trash className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Add Dish Inputs */}
-            <div className="flex flex-col sm:flex-row gap-3">
+          {/* Price */}
+          <div className="mb-8">
+            <label className="block text-white text-[15px] font-serif mb-2 flex items-center gap-1.5">
+              Price
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 font-semibold">₹</span>
               <input 
-                type="text" 
-                placeholder="Dish name ( e.g. Aloo Paratha )"
-                className="flex-1 bg-transparent border border-white/40 rounded-lg py-2.5 px-3 text-[13px] text-white placeholder-white/60 focus:outline-none focus:border-white/80"
-                value={newDishName}
-                onChange={(e) => setNewDishName(e.target.value)}
+                type="number" 
+                placeholder="150"
+                className="w-full bg-transparent border border-white/40 rounded-lg py-2.5 pl-10 pr-4 text-[14px] text-white placeholder-white/60 focus:outline-none focus:border-white/80 transition-colors appearance-none"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
               />
-              <div className="flex gap-3">
-                <input 
-                  type="number" 
-                  placeholder="₹ Price"
-                  className="w-[85px] bg-transparent border border-white/40 rounded-lg py-2.5 px-3 text-[13px] text-white placeholder-white/60 focus:outline-none focus:border-white/80 text-center"
-                  value={newDishPrice}
-                  onChange={(e) => setNewDishPrice(e.target.value)}
-                />
-                <div className="relative">
-                  <select 
-                    className="w-[85px] bg-transparent border border-white/40 rounded-lg py-2.5 px-3 pl-5 text-[12px] font-medium text-white focus:outline-none focus:border-white/80 appearance-none bg-none"
-                    value={newDishType}
-                    onChange={(e) => setNewDishType(e.target.value)}
-                  >
-                    <option value="VEG" className="text-black">VEG</option>
-                    <option value="NON-VEG" className="text-black">NON</option>
-                  </select>
-                  <span className={`absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full ${newDishType === 'VEG' ? 'bg-green-400' : 'bg-red-400'}`}></span>
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
-                  </span>
-                </div>
-                <button 
-                  onClick={handleAddDish}
-                  className="bg-[#5c2b2c] text-white px-5 rounded-lg text-[13px] font-medium transition-colors shadow-sm hover:bg-[#4a2223]"
-                >
-                  + Add
-                </button>
-              </div>
             </div>
           </div>
 
@@ -303,13 +263,21 @@ const PostDish = () => {
             <div>
               <label className="block text-white text-[15px] font-serif mb-2">Ready by</label>
               <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 w-4 h-4" />
-                <input 
-                  type="time" 
-                  className="w-full bg-transparent border border-white/40 rounded-lg py-2.5 pl-9 pr-3 text-[14px] text-white placeholder-white/60 focus:outline-none focus:border-white/80"
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 w-4 h-4 pointer-events-none" />
+                <select 
+                  className="w-full bg-transparent border border-white/40 rounded-lg py-2.5 pl-9 pr-3 text-[14px] text-white focus:outline-none focus:border-white/80 appearance-none bg-none cursor-pointer"
                   value={readyBy}
                   onChange={(e) => setReadyBy(e.target.value)}
-                />
+                  style={{ backgroundColor: 'transparent' }}
+                >
+                  <option value="" disabled className="text-black/50">Select time</option>
+                  {timeOptions.map((time) => (
+                    <option key={time} value={time} className="text-black font-medium">{time}</option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
               </div>
             </div>
             <div>
