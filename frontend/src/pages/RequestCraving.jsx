@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { FiCamera as Camera, FiClock as Clock, FiMapPin as MapPin, FiUsers as Users } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { createFoodRequest } from '../services/firestoreService';
 
 const RequestCraving = () => {
   const navigate = useNavigate();
@@ -65,27 +65,28 @@ const RequestCraving = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/food-requests`,
-        {
-          tag,
-          isVeg,
-          dishName,
-          description,
-          servings: Number(servings),
-          price: Number(budget),
-          deliveryLocation,
-          neededBy,
-          imageUrl: image || ''
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const userCollege = (user?.collegeName || "").trim();
+      const userId = user?._id || user?.uid;
+      await createFoodRequest({
+        buyerId: userId,
+        buyerName: user?.name || "Hosteler",
+        collegeName: userCollege,
+        tag,
+        isVeg,
+        dishName,
+        description,
+        servings: Number(servings),
+        price: Number(budget),
+        deliveryLocation,
+        neededBy,
+        imageUrl: image || ''
+      });
+
       toast.success('Craving requested successfully!');
       navigate('/hosteler-dashboard');
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Failed to post craving');
+      toast.error(err.message || 'Failed to post craving');
     } finally {
       setLoading(false);
     }

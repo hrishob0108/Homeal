@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { FiCamera as Camera, FiTrash2 as Trash, FiClock as Clock, FiMapPin as MapPin, FiUsers as Users } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { createMeal } from '../services/firestoreService';
 
 const PostDish = () => {
   const navigate = useNavigate();
@@ -93,9 +93,12 @@ const PostDish = () => {
     setLoading(true);
     const toastId = toast.loading('Publishing your menu...');
     try {
-      const token = localStorage.getItem('token');
+      const userCollege = (user?.collegeName || "").trim();
+      const userId = user?._id || user?.uid;
       const payload = {
-        cookId: user._id,
+        createdBy: userId,
+        cookName: user?.name || "Chef",
+        collegeName: userCollege,
         tag,
         title,
         price: Number(price),
@@ -108,15 +111,13 @@ const PostDish = () => {
         image,
       };
 
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/meals`, payload, { 
-        headers: { Authorization: `Bearer ${token}` } 
-      });
+      await createMeal(payload);
       
       toast.success('Meal published successfully!', { id: toastId });
       navigate('/dayscholar-dashboard');
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Failed to publish meal', { id: toastId });
+      toast.error(err.message || 'Failed to publish meal', { id: toastId });
     } finally {
       setLoading(false);
     }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiPlus, FiDollarSign, FiMapPin, FiClock, FiActivity } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import api from '../services/api';
+import { createFoodRequest } from '../services/firestoreService';
 
 const modalVariants = {
   hidden: { opacity: 0, scale: 0.9, y: 20 },
@@ -38,7 +38,14 @@ const RequestFoodModal = ({ isOpen, onClose, onRequestCreated }) => {
 
     try {
       setSubmitting(true);
-      const res = await api.post('/food-requests', {
+      const user = JSON.parse(sessionStorage.getItem('currentUser'));
+      const userId = user?._id || user?.uid;
+      const userCollege = (user?.collegeName || "").trim();
+
+      const newReq = await createFoodRequest({
+        buyerId: userId,
+        buyerName: user?.name || "Hosteler",
+        collegeName: userCollege,
         dishName: form.dishName,
         description: form.description,
         price: Number(form.price),
@@ -46,23 +53,21 @@ const RequestFoodModal = ({ isOpen, onClose, onRequestCreated }) => {
         neededBy: form.neededBy
       });
 
-      if (res.status === 200 || res.status === 201) {
-        toast.success(`Requested ${form.dishName} successfully!`);
-        onRequestCreated(res.data);
-        setForm({
-          dishName: '',
-          description: '',
-          price: '',
-          neededBy: '',
-          deliveryLocation: ''
-        });
-        onClose();
-      } else {
-        toast.error("Failed to post custom request.");
+      toast.success(`Requested ${form.dishName} successfully!`);
+      if (onRequestCreated) {
+        onRequestCreated(newReq);
       }
+      setForm({
+        dishName: '',
+        description: '',
+        price: '',
+        neededBy: '',
+        deliveryLocation: ''
+      });
+      onClose();
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Something went wrong.");
+      toast.error(err.message || "Failed to submit request.");
     } finally {
       setSubmitting(false);
     }
