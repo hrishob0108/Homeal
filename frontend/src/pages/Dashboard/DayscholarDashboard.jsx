@@ -2,13 +2,22 @@ import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiBell, FiCheckCircle, FiStar, FiMapPin, FiClock, FiTruck, FiZap, FiMenu, FiSmile, FiLogOut, FiEdit2, FiTrash2, FiX, FiImage, FiLink, FiUpload, FiArrowRight, FiLoader, FiHome, FiSearch, FiChevronRight, FiAward,
-  FiChevronDown, FiTrendingUp, FiArrowUpRight, FiBarChart2, FiBox, FiHeart, FiCheckSquare, FiClipboard
+  FiChevronDown, FiTrendingUp, FiArrowUpRight, FiBarChart2, FiBox, FiHeart, FiCheckSquare, FiClipboard, FiUser
 } from 'react-icons/fi';
 import { FaRupeeSign, FaFire } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import api from '../../services/api';
-import { useSocket } from '../../context/SocketContext';
+import { 
+  listenDayscholarOrders, 
+  listenCollegeFoodRequests, 
+  getMealsByCollege, 
+  createMeal, 
+  deleteMeal, 
+  updateOrderStatus, 
+  acceptFoodRequest, 
+  getSellerStats, 
+  getSellerReviews 
+} from '../../services/firestoreService';
 import CameraUploadModal from '../../components/CameraUploadModal';
 
 // Animation configs
@@ -24,11 +33,13 @@ const itemVariants = {
 
 const DayscholarDashboard = () => {
   const navigate = useNavigate();
-  const socket = useSocket();
   const wid = useRef();
   const [localUploads, setLocalUploads] = useState({});
   const [otpInputs, setOtpInputs] = useState({});
   const activeOrderIdRef = useRef(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTag, setSelectedTag] = useState("All");
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [requests, setRequests] = useState([]);
   const [myMenu, setMyMenu] = useState([]);
   const [customRequests, setCustomRequests] = useState([]);
@@ -41,6 +52,9 @@ const DayscholarDashboard = () => {
   const [postDishForm, setPostDishForm] = useState({ title: '', price: '', image: '', tag: 'New', isVeg: true });
   const [isPublishing, setIsPublishing] = useState(false);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  
+  const prevOrdersSetRef = useRef(null);
+  const prevFoodReqsSetRef = useRef(null);
   
   const user = JSON.parse(sessionStorage.getItem('currentUser'));
 
@@ -57,114 +71,81 @@ const DayscholarDashboard = () => {
       }
       return;
     }
+    const userCollege = (user?.collegeName || "").trim();
+    const userId = user._id || user.uid;
+
+    // 1. Real-time incoming Orders listener
+    const unsubscribeOrders = listenDayscholarOrders(userId, (liveOrders) => {
+      if (prevOrdersSetRef.current) {
+        liveOrders.forEach(o => {
+          if (!prevOrdersSetRef.current.has(o._id)) {
+            toast.success(`🔔 New Order! "${o.dishName}" from ${o.buyerName || 'Hosteler'}!`, { duration: 8000 });
+            setNotifications(prev => [
+              { id: `${o._id}_${Date.now()}`, text: `New order received: "${o.dishName}" from ${o.buyerName || 'Hosteler'}` },
+              ...prev
+            ]);
+          }
+        });
+      }
+      prevOrdersSetRef.current = new Set(liveOrders.map(o => o._id));
+      setRequests(liveOrders);
+    });
+
+    // 2. Real-time campus Food Requests listener
+    const unsubscribeFoodRequests = listenCollegeFoodRequests(userCollege, (liveReqs) => {
+      if (prevFoodReqsSetRef.current) {
+        liveReqs.forEach(r => {
+          if (!prevFoodReqsSetRef.current.has(r._id)) {
+            toast(`🍲 New Campus Craving: "${r.dishName}"!`, { duration: 6000, icon: '🎓' });
+            setNotifications(prev => [
+              { id: `${r._id}_${Date.now()}`, text: `Campus craving posted: "${r.dishName}"` },
+              ...prev
+            ]);
+          }
+        });
+      }
+      prevFoodReqsSetRef.current = new Set(liveReqs.map(r => r._id));
+      setCustomRequests(liveReqs);
+    });
+
+    // 3. Initial fetch for menu and reviews
     fetchDashboardData();
-  }, []);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleNewOrderRequest = (newOrder) => {
-      console.log("[DayscholarDashboard] Received new_order_request via socket:", newOrder);
-      toast.success(`🎉 New order received: ${newOrder.dishName}!`);
-      setNotifications(prev => [
-        { id: Date.now(), text: `New order request for "${newOrder.dishName}" from ${newOrder.buyerName}!` },
-        ...prev
-      ]);
-      setRequests(prev => {
-        if (prev.some(o => o._id === newOrder._id)) {
-          return prev.map(o => o._id === newOrder._id ? newOrder : o);
-        }
-        return [newOrder, ...prev];
-      });
-      fetchDashboardData();
-    };
-
-    const handleOrderStatusUpdated = (updatedOrder) => {
-      console.log("[DayscholarDashboard] Received order_status_updated via socket:", updatedOrder);
-      setRequests(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
-      fetchDashboardData();
-    };
-
-    const handleNewFoodRequest = (newRequest) => {
-      console.log("[DayscholarDashboard] Received new_food_request via socket:", newRequest);
-      toast.success(`New custom food request: ${newRequest.dishName}! 📣`);
-      setCustomRequests(prev => {
-        if (prev.some(r => r._id === newRequest._id)) return prev;
-        return [newRequest, ...prev];
-      });
-      fetchDashboardData();
-    };
-
-    const handleFoodRequestCancelled = ({ id }) => {
-      setCustomRequests(prev => prev.filter(r => r._id !== id));
-      fetchDashboardData();
-    };
-
-    const handleFoodRequestAccepted = ({ id }) => {
-      setCustomRequests(prev => prev.filter(r => r._id !== id));
-      fetchDashboardData();
-    };
-
-    const handleNewReviewReceived = (newReview) => {
-      toast.success("You received a new review! ⭐");
-      setNotifications(prev => [
-        { id: Date.now(), text: `New ${newReview.rating}★ review received from ${newReview.buyerName || 'a Hosteler'}!` },
-        ...prev
-      ]);
-      fetchDashboardData();
-    };
-
-    socket.on('new_order_request', handleNewOrderRequest);
-    socket.on('order_status_updated', handleOrderStatusUpdated);
-    socket.on('new_food_request', handleNewFoodRequest);
-    socket.on('food_request_cancelled', handleFoodRequestCancelled);
-    socket.on('food_request_accepted', handleFoodRequestAccepted);
-    socket.on('new_review_received', handleNewReviewReceived);
 
     return () => {
-      socket.off('new_order_request', handleNewOrderRequest);
-      socket.off('order_status_updated', handleOrderStatusUpdated);
-      socket.off('new_food_request', handleNewFoodRequest);
-      socket.off('food_request_cancelled', handleFoodRequestCancelled);
-      socket.off('food_request_accepted', handleFoodRequestAccepted);
-      socket.off('new_review_received', handleNewReviewReceived);
+      unsubscribeOrders();
+      unsubscribeFoodRequests();
     };
-  }, [socket]);
+  }, []);
 
   const fetchDashboardData = async () => {
     try {
       const userCollege = (user?.collegeName || "").trim();
-      const resOrders = await api.get('/orders/requests');
-      setRequests(resOrders.data);
-      const resMeals = await api.get('/meals', {
-        params: userCollege ? { collegeName: userCollege } : {}
-      });
-      setMyMenu(resMeals.data.filter(m => (typeof m.createdBy === 'object' ? (m.createdBy._id || m.createdBy.id) : m.createdBy) === user._id));
-      const resPendingRequests = await api.get('/food-requests/pending', {
-        params: userCollege ? { collegeName: userCollege } : {}
-      });
-      setCustomRequests(resPendingRequests.data);
-      const statsRes = await api.get(`/reviews/seller/${user._id}/stats`);
-      setRatingStats(statsRes.data);
-      const reviewsRes = await api.get(`/reviews/user/${user._id}`);
-      setReviews(reviewsRes.data);
+      const userId = user?._id || user?.uid;
+      if (!userId) return;
+
+      const [allMeals, stats, sellerReviews] = await Promise.all([
+        getMealsByCollege(userCollege),
+        getSellerStats(userId),
+        getSellerReviews(userId)
+      ]);
+
+      setMyMenu(allMeals.filter(m => (typeof m.createdBy === 'object' ? (m.createdBy._id || m.createdBy.id) : m.createdBy) === userId));
+      setRatingStats(stats);
+      setReviews(sellerReviews);
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to load dashboard data");
+      console.error("Dashboard data load error:", err);
     }
   };
 
   const handleAcceptRequest = async (requestId) => {
     setActionLoadingId(`accept_${requestId}`);
     try {
-      const res = await api.put(`/food-requests/${requestId}/accept`);
-      if (res.status === 200) {
-        toast.success("Request accepted! Start cooking.");
-        fetchDashboardData();
-      }
+      await acceptFoodRequest(requestId, user);
+      toast.success("Request accepted! Active order created.");
+      fetchDashboardData();
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Failed to accept request.");
+      toast.error(err.message || "Failed to accept request.");
     } finally {
       setActionLoadingId(null);
     }
@@ -173,16 +154,10 @@ const DayscholarDashboard = () => {
   const handleUpdateStatus = async (orderId, newStatus) => {
     setActionLoadingId(`status_${orderId}_${newStatus}`);
     try {
-      const payload = { status: newStatus };
-      const res = await api.put(`/orders/${orderId}/status`, payload);
-      if (res.status === 200) {
-        toast.success(`Order marked as ${newStatus}`);
-        fetchDashboardData();
-      } else {
-        toast.error("Failed to update order");
-      }
+      await updateOrderStatus(orderId, { status: newStatus });
+      toast.success(`Order marked as ${newStatus}`);
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to update order");
     } finally {
       setActionLoadingId(null);
     }
@@ -194,17 +169,21 @@ const DayscholarDashboard = () => {
      
      setIsPublishing(true);
      try {
-       const res = await api.post('/meals', postDishForm);
-       if(res.status === 200 || res.status === 201) {
-          toast.success("Dish Published seamlessly!");
-          setIsPostDishModalOpen(false);
-          setPostDishForm({ title: '', price: '', image: '', tag: 'New', isVeg: true });
-          fetchDashboardData();
-       } else {
-          toast.error("Failed to post dish.");
-       }
+       const userCollege = (user?.collegeName || "").trim();
+       const userId = user._id || user.uid;
+       await createMeal({
+         ...postDishForm,
+         collegeName: userCollege,
+         cookName: user.name,
+         createdBy: userId
+       });
+       toast.success("Dish Published seamlessly!");
+       setIsPostDishModalOpen(false);
+       setPostDishForm({ title: '', price: '', image: '', tag: 'New', isVeg: true });
+       fetchDashboardData();
      } catch (err) {
-        toast.error("Network error. Is the server running?");
+        console.error(err);
+        toast.error("Failed to post dish.");
      } finally {
         setIsPublishing(false);
      }
@@ -230,21 +209,15 @@ const DayscholarDashboard = () => {
         payload = { status: 'Delivered', handoverProofImageUrl: localUrl, otp: otp };
       }
 
-      const res = await api.put(`/orders/${orderId}/status`, payload);
-
-      if (res.status === 200) {
-        toast.success(type === 'cooking' ? "Cooking Proof uploaded!" : "Delivery complete!");
-        setLocalUploads(prev => {
-          const copy = { ...prev };
-          delete copy[`${orderId}_${type}`];
-          return copy;
-        });
-        fetchDashboardData();
-      } else {
-        toast.error("Failed to submit proof");
-      }
+      await updateOrderStatus(orderId, payload);
+      toast.success(type === 'cooking' ? "Cooking Proof uploaded!" : "Delivery complete!");
+      setLocalUploads(prev => {
+        const copy = { ...prev };
+        delete copy[`${orderId}_${type}`];
+        return copy;
+      });
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message);
+      toast.error(err.message || "Failed to submit proof");
     } finally {
       setActionLoadingId(null);
     }
@@ -292,7 +265,7 @@ const DayscholarDashboard = () => {
   return (
     <div className="bg-[#FFF0DD] min-h-screen font-sans relative overflow-x-hidden text-[#431619] pb-12">
 
-      <Header user={user} navigate={navigate} notifications={notifications} setNotifications={setNotifications} isNotifOpen={isNotifOpen} setIsNotifOpen={setIsNotifOpen} />
+      <Header user={user} navigate={navigate} notifications={notifications} setNotifications={setNotifications} isNotifOpen={isNotifOpen} setIsNotifOpen={setIsNotifOpen} isProfileMenuOpen={isProfileMenuOpen} setIsProfileMenuOpen={setIsProfileMenuOpen} />
 
       <main className="relative z-10 pt-[140px] px-4 sm:px-6 lg:px-12 max-w-[1440px] mx-auto">
         <motion.div variants={containerVariants} initial="hidden" animate="visible">
@@ -371,7 +344,7 @@ const DayscholarDashboard = () => {
   );
 };
 
-const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, setIsNotifOpen, searchQuery, setSearchQuery }) => {
+const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, setIsNotifOpen, isProfileMenuOpen, setIsProfileMenuOpen, searchQuery, setSearchQuery }) => {
   const handleLogout = () => {
     sessionStorage.removeItem('currentUser');
     sessionStorage.removeItem('user');
@@ -391,8 +364,8 @@ const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, 
         <div className="flex w-full justify-between items-center h-full relative">
 
           {/* Left: Logo */}
-          <Link to="/" className="text-[32px] font-serif font-bold text-[#8C3F3F] tracking-tight shrink-0">
-            Craavyo
+          <Link to="/" className="shrink-0 flex items-center">
+            <img src="/logo.png" alt="Craavyo Logo" className="h-12 md:h-16 w-auto" />
           </Link>
 
           {/* Middle: Search Bar (Exactly Centered) */}
@@ -466,21 +439,43 @@ const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, 
               </AnimatePresence>
             </div>
 
-            {/* User Avatar */}
-            <div className="relative group cursor-pointer" onClick={handleLogout} title="Click to Logout">
-              {user?.profilePicture ? (
-                <img src={user.profilePicture} alt="User" className="w-[44px] h-[44px] rounded-full object-cover border border-[#E8D9CF] shadow-sm hover:scale-105 transition-transform duration-300" />
-              ) : (
-                <div className="w-[44px] h-[44px] rounded-full bg-[#FFF5EF] flex items-center justify-center text-[#8C3F3F] font-bold text-lg shadow-sm border border-[#E8D9CF] uppercase overflow-hidden hover:scale-105 transition-transform duration-300">
-                  {user?.name?.[0] || 'D'}
-                </div>
-              )}
-              {/* Tooltip for logout */}
-              <div className="absolute top-14 right-0 bg-white shadow-lg rounded-xl px-4 py-2 text-[13px] font-semibold text-[#8C3F3F] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-[#E8D9CF]">
-                Logout
+            {/* User Avatar & Dropdown */}
+            <div className="relative z-50">
+              <div 
+                className="w-[44px] h-[44px] rounded-full bg-[#FFF5EF] flex items-center justify-center text-[#8C3F3F] font-bold text-lg shadow-sm border border-[#E8D9CF] uppercase overflow-hidden hover:scale-105 transition-transform duration-300 cursor-pointer"
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+              >
+                {user?.name?.[0] || 'D'}
               </div>
-            </div>
 
+              <AnimatePresence>
+                {isProfileMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                    className="absolute right-0 mt-3 w-48 bg-white/95 backdrop-blur-xl border border-[#E8D9CF] shadow-2xl rounded-2xl py-2 z-50 overflow-hidden"
+                  >
+                    <Link 
+                      to="/profile" 
+                      className="flex items-center px-4 py-3 text-sm font-semibold text-[#4D2B2B] hover:bg-[#FFF5EF] transition-colors"
+                      onClick={() => setIsProfileMenuOpen(false)}
+                    >
+                      <FiUser className="mr-3 w-4 h-4" />
+                      My Profile
+                    </Link>
+                    <div className="border-t border-[#E8D9CF]/50 my-1"></div>
+                    <button 
+                      onClick={handleLogout}
+                      className="w-full flex items-center px-4 py-3 text-sm font-semibold text-[#8C3F3F] hover:bg-[#FFF5EF] transition-colors"
+                    >
+                      <FiLogOut className="mr-3 w-4 h-4" />
+                      Logout
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </motion.header>
@@ -953,22 +948,19 @@ const ImageUploadBox = ({ value, onChange, placeholder = "Paste link, upload pho
   );
 };
 
-const TodaysMenu = ({ menu, fetchDashboardData }) => {
+const TodaysMenu = ({ menu, setMyMenu }) => {
   const [deletingId, setDeletingId] = useState(null);
 
   const handleDeleteItem = async (id) => {
     if (!window.confirm("Are you sure you want to delete this dish?")) return;
     setDeletingId(id);
     try {
-      const res = await api.delete(`/meals/${id}`);
-      if (res.status === 200) {
-        toast.success("Meal deleted from menu.");
-        fetchDashboardData();
-      } else {
-        toast.error("Failed to delete meal.");
-      }
+      await deleteMeal(id);
+      toast.success("Dish deleted successfully.");
+      setMyMenu(prev => prev.filter(m => (m._id || m.id) !== id));
     } catch (err) {
-      toast.error("Network error deleting meal.");
+      console.error(err);
+      toast.error("Failed to delete dish.");
     } finally {
       setDeletingId(null);
     }

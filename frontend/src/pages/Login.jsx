@@ -2,8 +2,11 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowLeft, FiLoader } from "react-icons/fi";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebase";
+import { getUserProfile } from "../services/firestoreService";
+import toast from "react-hot-toast";
 import GOO from "../firebase";
-import api from "../services/api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -28,18 +31,47 @@ const Login = () => {
     if (validate()) {
       setIsLoading(true);
       try {
-        const response = await api.post("/auth/login", { email, password });
-        const data = response.data;
-        if (response.status === 200 || response.status === 201) {
-          sessionStorage.setItem("user", JSON.stringify(data));
-          sessionStorage.setItem("currentUser", JSON.stringify(data));
-          navigate("/dashboard");
-        } else {
-          setErrors({ api: data.message || "Login failed" });
-        }
+        const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+        const firebaseUser = userCredential.user;
+        const profile = await getUserProfile(firebaseUser.uid);
+        const token = await firebaseUser.getIdToken();
+
+        const sessionUser = {
+          _id: firebaseUser.uid,
+          uid: firebaseUser.uid,
+          name: profile?.name || firebaseUser.displayName || "Student",
+          email: profile?.email || firebaseUser.email,
+          role: profile?.role || "dayscholar",
+          phone: profile?.phone || "",
+          isPhoneVerified: Boolean(profile?.isPhoneVerified),
+          state: profile?.state || "",
+          district: profile?.district || "",
+          collegeName: profile?.collegeName || "",
+          token
+        };
+
+        sessionStorage.setItem("user", JSON.stringify(sessionUser));
+        sessionStorage.setItem("currentUser", JSON.stringify(sessionUser));
+        toast.success(`Welcome back, ${sessionUser.name}!`);
+        navigate("/dashboard");
       } catch (error) {
-        console.error("Login Error:", error);
-        setErrors({ api: error.response?.data?.message || "Something went wrong. Please try again." });
+        console.error("Firebase Login Error:", error);
+        let errorMsg = "Something went wrong. Please try again.";
+        if (
+          error.code === "auth/invalid-credential" ||
+          error.code === "auth/user-not-found" ||
+          error.code === "auth/wrong-password"
+        ) {
+          errorMsg = "Invalid email or password.";
+        } else if (error.code === "auth/too-many-requests") {
+          errorMsg = "Too many failed attempts. Please try again in a moment.";
+        } else if (error.code === "auth/operation-not-allowed") {
+          errorMsg = "Email/Password sign-in is not enabled in Firebase Console. Please enable it in Authentication.";
+        } else if (error.message) {
+          errorMsg = error.message;
+        }
+        setErrors({ api: errorMsg });
+        toast.error(errorMsg);
       } finally {
         setIsLoading(false);
       }
@@ -91,6 +123,7 @@ const Login = () => {
       >
         {/* Card Header */}
         <div className="text-center mb-6">
+          <img src="/logo.png" alt="Craavyo" className="h-16 sm:h-20 w-auto mx-auto mb-4" />
           <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-white mb-1.5">
             Welcome Back
           </h1>

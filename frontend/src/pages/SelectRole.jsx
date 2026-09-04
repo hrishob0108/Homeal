@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiHome, FiBriefcase, FiLoader } from "react-icons/fi";
-import api from "../services/api";
+import { createUserProfile } from "../services/firestoreService";
+import { auth } from "../firebase";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -42,23 +43,33 @@ const SelectRole = () => {
 
     setLoadingRole(role);
     try {
-      const response = await api.post("/auth/google", { 
-        name: googleUser.name, 
-        email: googleUser.email, 
-        role: role,
-        phone: phone
-      });
-      const data = response.data;
-      
-      if(response.status === 200 || response.status === 201) {
-         sessionStorage.setItem("currentUser", JSON.stringify(data));
-         navigate(`/${role}-dashboard`);
-      } else {
-         setPhoneError(data.message || "Failed to sign up.");
+      const uid = googleUser.uid || auth.currentUser?.uid;
+      if (!uid) {
+        setPhoneError("Session expired. Please log in with Google again.");
+        return;
       }
+
+      const profileData = {
+        name: googleUser.name,
+        email: googleUser.email,
+        role: role,
+        phone: phone.trim(),
+        isPhoneVerified: false,
+        state: "",
+        district: "",
+        collegeName: ""
+      };
+
+      const savedUser = await createUserProfile(uid, profileData);
+      
+      sessionStorage.setItem("user", JSON.stringify(savedUser));
+      sessionStorage.setItem("currentUser", JSON.stringify(savedUser));
+      sessionStorage.removeItem("googleUser");
+      
+      navigate(`/${role}-dashboard`);
     } catch(err) {
-       console.error("Network Error", err);
-       setPhoneError("Something went wrong. Please try again.");
+       console.error("Firestore user creation error:", err);
+       setPhoneError("Something went wrong while saving your profile. Please try again.");
     } finally {
        setLoadingRole(null);
     }

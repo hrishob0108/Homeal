@@ -14,6 +14,7 @@ import PostDish from './pages/PostDish';
 import RequestCraving from './pages/RequestCraving';
 import SelectRole from './pages/SelectRole';
 import TrackOrders from './pages/TrackOrders';
+import Profile from './pages/Profile';
 import CollegeOnboardingModal from './components/CollegeOnboardingModal';
 import { Toaster } from 'react-hot-toast';
 
@@ -88,6 +89,7 @@ const App = () => {
       <Route path="/hostelerDashboard" element={<Navigate to="/hosteler-dashboard" />} />
 
       <Route path="/select-role" element={<SelectRole />} />
+      <Route path="/profile" element={<Profile />} />
     </Routes>
     </>
   );
