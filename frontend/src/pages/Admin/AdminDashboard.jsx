@@ -22,6 +22,8 @@ import {
   FiCamera,
   FiX,
   FiLoader,
+  FiEdit2,
+  FiTrash2,
 } from "react-icons/fi";
 import {
   getAdminMetrics,
@@ -30,9 +32,11 @@ import {
   getAllUsersForAdmin,
   getFlaggedReviews,
   updateAdminStatus,
+  deleteAdminAccount,
 } from "../../services/firestoreService";
 import collegesHierarchy from "../../data/collegesHierarchy.json";
 import AdminCreateHeadModal from "../../components/Admin/AdminCreateHeadModal";
+import AdminEditHeadModal from "../../components/Admin/AdminEditHeadModal";
 import toast from "react-hot-toast";
 
 const AdminDashboard = () => {
@@ -70,6 +74,9 @@ const AdminDashboard = () => {
 
   // Modals & Inspection
   const [isCreateHeadOpen, setIsCreateHeadOpen] = useState(false);
+  const [editingLeader, setEditingLeader] = useState(null);
+  const [deletingLeader, setDeletingLeader] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [previewProofUrl, setPreviewProofUrl] = useState(null);
   const [campusSearchQuery, setCampusSearchQuery] = useState("");
   const [orderSearchQuery, setOrderSearchQuery] = useState("");
@@ -79,8 +86,14 @@ const AdminDashboard = () => {
     return Object.keys(collegesHierarchy).sort();
   }, []);
 
-  // Check auth
+  // Check auth & set admin page title/favicon
   useEffect(() => {
+    document.title = "Craavyo Command Center | Executive Portal";
+    const link = document.querySelector("link[rel~='icon']");
+    if (link) {
+      link.href = "/logo-html.png";
+    }
+
     if (!admin || !["founder", "national_head", "state_head"].includes(admin.role)) {
       navigate("/admin/login");
     }
@@ -128,17 +141,51 @@ const AdminDashboard = () => {
     navigate("/admin/login");
   };
 
-  const handleToggleAdminStatus = async (targetUid, currentStatus) => {
+  const canManageMember = (member) => {
+    if (!admin || !member) return false;
+    if (member.role === "founder") return false;
+    if (admin.role === "founder") return true;
+    if (admin.role === "national_head" && member.role === "state_head") return true;
+    return false;
+  };
+
+  const handleToggleAdminStatus = async (targetMember) => {
+    if (!canManageMember(targetMember)) {
+      toast.error("You do not have permission to modify this administrator's status.");
+      return;
+    }
+    const currentStatus = targetMember.status || "active";
     const newStatus = currentStatus === "active" ? "suspended" : "active";
     try {
-      await updateAdminStatus(targetUid, newStatus);
-      toast.success(`Account status updated to ${newStatus}.`);
+      await updateAdminStatus(targetMember._id, newStatus);
+      toast.success(`${targetMember.name}'s status updated to ${newStatus}.`);
       setTeam((prev) =>
-        prev.map((m) => (m._id === targetUid ? { ...m, status: newStatus } : m))
+        prev.map((m) => (m._id === targetMember._id ? { ...m, status: newStatus } : m))
       );
     } catch (err) {
       console.error(err);
       toast.error("Failed to update status.");
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingLeader) return;
+    if (!canManageMember(deletingLeader)) {
+      toast.error("You do not have permission to delete this administrator.");
+      setDeletingLeader(null);
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await deleteAdminAccount(deletingLeader._id);
+      toast.success(`Permanently deleted leader ${deletingLeader.name}.`);
+      setTeam((prev) => prev.filter((m) => m._id !== deletingLeader._id));
+      setDeletingLeader(null);
+    } catch (err) {
+      console.error("Delete Leader Error:", err);
+      toast.error("Failed to delete leader account.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -200,9 +247,13 @@ const AdminDashboard = () => {
         {/* Left: Branding & Role */}
         <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#8C3F3F] to-[#E8AE68] p-0.5 shadow-md flex items-center justify-center">
-              <div className="w-full h-full bg-[#1A0C0E] rounded-[10px] flex items-center justify-center text-[#E8AE68] text-lg font-black">
-                <FiShield />
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#8C3F3F] to-[#E8AE68] p-0.5 shadow-lg shadow-[#8C3F3F]/30 flex items-center justify-center">
+              <div className="w-full h-full bg-[#1A0C0E] rounded-[14px] flex items-center justify-center overflow-hidden p-1.5">
+                <img
+                  src="/logo-html.png"
+                  alt="Craavyo Favicon Logo"
+                  className="w-full h-full object-contain filter drop-shadow"
+                />
               </div>
             </div>
             <div>
@@ -524,15 +575,41 @@ const AdminDashboard = () => {
                           </span>
                         </td>
                         <td className="py-4 px-4 text-right">
-                          {member.role !== "founder" && (
-                            <button
-                              onClick={() =>
-                                handleToggleAdminStatus(member._id, member.status || "active")
-                              }
-                              className="text-xs font-bold text-[#E8AE68] hover:underline cursor-pointer"
-                            >
-                              {member.status === "suspended" ? "Reactivate" : "Suspend"}
-                            </button>
+                          {canManageMember(member) && (
+                            <div className="flex items-center justify-end gap-1.5 sm:gap-2">
+                              {/* Edit Leader */}
+                              <button
+                                onClick={() => setEditingLeader(member)}
+                                className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-[#E8AE68]/20 text-white/80 hover:text-[#E8AE68] border border-white/10 hover:border-[#E8AE68]/30 transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+                                title="Edit Leader Details"
+                              >
+                                <FiEdit2 className="w-3.5 h-3.5 text-[#E8AE68]" />
+                                <span>Edit</span>
+                              </button>
+
+                              {/* Suspend / Reactivate */}
+                              <button
+                                onClick={() => handleToggleAdminStatus(member)}
+                                className={`px-2.5 py-1.5 rounded-xl border transition-all text-xs font-bold cursor-pointer ${
+                                  member.status === "suspended"
+                                    ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                    : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30"
+                                }`}
+                                title={member.status === "suspended" ? "Reactivate Leader" : "Suspend Leader"}
+                              >
+                                {member.status === "suspended" ? "Reactivate" : "Suspend"}
+                              </button>
+
+                              {/* Delete Leader */}
+                              <button
+                                onClick={() => setDeletingLeader(member)}
+                                className="px-2.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200 border border-red-500/20 hover:border-red-500/40 transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+                                title="Permanently Delete Leader"
+                              >
+                                <FiTrash2 className="w-3.5 h-3.5 text-red-400" />
+                                <span>Delete</span>
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -758,11 +835,85 @@ const AdminDashboard = () => {
       <AdminCreateHeadModal
         isOpen={isCreateHeadOpen}
         onClose={() => setIsCreateHeadOpen(false)}
-        currentAdminRole={admin.role}
+        currentAdminRole={admin?.role}
+        existingTeam={team}
         onHeadCreated={(newAdmin) => {
           setTeam((prev) => [newAdmin, ...prev]);
         }}
       />
+
+      {/* Modal: Edit Leader Profile */}
+      <AdminEditHeadModal
+        isOpen={Boolean(editingLeader)}
+        onClose={() => setEditingLeader(null)}
+        leader={editingLeader}
+        currentAdminRole={admin?.role}
+        existingTeam={team}
+        onHeadUpdated={(updatedLeader) => {
+          setTeam((prev) =>
+            prev.map((m) => (m._id === updatedLeader._id ? updatedLeader : m))
+          );
+        }}
+      />
+
+      {/* Modal: Confirm Permanent Delete */}
+      <AnimatePresence>
+        {deletingLeader && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="w-full max-w-md bg-[#1E1113] border border-red-500/40 rounded-3xl p-6 sm:p-7 shadow-2xl text-white text-left relative"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center text-2xl mb-4">
+                <FiTrash2 />
+              </div>
+              <h3 className="text-xl font-serif font-bold text-white mb-1.5">
+                Delete Leadership Account?
+              </h3>
+              <p className="text-xs text-white/60 mb-4 leading-relaxed">
+                Are you sure you want to permanently delete{" "}
+                <strong className="text-white">{deletingLeader.name}</strong> (
+                <span className="font-mono text-white/80">{deletingLeader.email}</span>)?
+                This will revoke all administrative access to the Craavyo Command Center.
+              </p>
+
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-[11px] text-red-200 mb-6 flex items-center gap-2">
+                <FiAlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                <span>This action is permanent and cannot be undone.</span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setDeletingLeader(null)}
+                  className="w-1/2 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleConfirmDelete}
+                  className="w-1/2 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg shadow-red-600/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <>
+                      <FiLoader className="w-3.5 h-3.5 animate-spin" /> Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <FiTrash2 className="w-3.5 h-3.5" /> Confirm Delete
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Modal: Fullscreen Photo Proof Inspection */}
       <AnimatePresence>

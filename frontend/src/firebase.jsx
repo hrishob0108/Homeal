@@ -29,11 +29,29 @@ function GOO() {
     signInWithPopup(auth, provider)
       .then(async (res) => {
         try {
-          const userDocRef = doc(db, "users", res.user.uid);
-          const userDocSnap = await getDoc(userDocRef);
+          // Check partitioned collections: hostelers, dayscholars, admins, with legacy fallback
+          let profile = null;
+          const hostelerSnap = await getDoc(doc(db, "hostelers", res.user.uid));
+          if (hostelerSnap.exists()) {
+            profile = hostelerSnap.data();
+          } else {
+            const dayscholarSnap = await getDoc(doc(db, "dayscholars", res.user.uid));
+            if (dayscholarSnap.exists()) {
+              profile = dayscholarSnap.data();
+            } else {
+              const adminSnap = await getDoc(doc(db, "admins", res.user.uid));
+              if (adminSnap.exists()) {
+                profile = adminSnap.data();
+              } else {
+                const legacySnap = await getDoc(doc(db, "users", res.user.uid));
+                if (legacySnap.exists()) {
+                  profile = legacySnap.data();
+                }
+              }
+            }
+          }
 
-          if (userDocSnap.exists() && userDocSnap.data().role) {
-            const profile = userDocSnap.data();
+          if (profile && profile.role) {
             const token = await res.user.getIdToken();
             const currentUser = {
               _id: res.user.uid,

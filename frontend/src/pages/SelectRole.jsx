@@ -18,8 +18,7 @@ const itemVariants = {
 const SelectRole = () => {
   const navigate = useNavigate();
   const googleUserString = sessionStorage.getItem("googleUser");
-  const [phone, setPhone] = useState("");
-  const [phoneError, setPhoneError] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [loadingRole, setLoadingRole] = useState(null);
 
   useEffect(() => {
@@ -31,21 +30,12 @@ const SelectRole = () => {
   const googleUser = googleUserString ? JSON.parse(googleUserString) : { name: "Student" };
 
   const handleRoleSelection = async (role) => {
-    const phoneRegex = /^[0-9]{10}$/;
-    if (!phone) {
-      setPhoneError("Phone number is required to sign up");
-      return;
-    }
-    if (!phoneRegex.test(phone)) {
-      setPhoneError("Phone number must be exactly 10 digits");
-      return;
-    }
-
     setLoadingRole(role);
+    setErrorMessage("");
     try {
       const uid = googleUser.uid || auth.currentUser?.uid;
       if (!uid) {
-        setPhoneError("Session expired. Please log in with Google again.");
+        setErrorMessage("Session expired. Please log in with Google again.");
         return;
       }
 
@@ -53,7 +43,7 @@ const SelectRole = () => {
         name: googleUser.name,
         email: googleUser.email,
         role: role,
-        phone: phone.trim(),
+        phone: googleUser.phone || "",
         isPhoneVerified: false,
         state: "",
         district: "",
@@ -69,7 +59,7 @@ const SelectRole = () => {
       navigate(`/${role}-dashboard`);
     } catch(err) {
        console.error("Firestore user creation error:", err);
-       setPhoneError("Something went wrong while saving your profile. Please try again.");
+       setErrorMessage("Something went wrong while saving your profile. Please try again.");
     } finally {
        setLoadingRole(null);
     }
@@ -108,26 +98,11 @@ const SelectRole = () => {
           Tell us how you plan on using Craavyo today so we can set up your personalized dashboard.
         </motion.p>
 
-        {/* Phone number input block */}
-        <motion.div variants={itemVariants} className="mb-10 max-w-xs mx-auto text-left relative group">
-          <label className="block text-espresso mb-2 text-xs font-black uppercase tracking-wider ml-1 text-center">Phone Number</label>
-          <div className="relative flex items-center">
-            <input
-              type="tel"
-              placeholder="Enter 10-digit number"
-              maxLength="10"
-              value={phone}
-              onChange={(e) => {
-                setPhone(e.target.value);
-                if (phoneError) setPhoneError("");
-              }}
-              className={`w-full px-5 py-3.5 bg-white text-espresso rounded-2xl border ${phoneError ? 'border-red-400 focus:ring-red-400' : 'border-primary/20 focus:border-primary focus:ring-primary/10'} focus:outline-none focus:ring-4 transition-all duration-300 font-bold text-center text-lg shadow-sm hover:border-primary/40`}
-            />
-          </div>
-          {phoneError && (
-            <p className="text-red-500 text-xs font-bold mt-2 ml-1 text-center">{phoneError}</p>
-          )}
-        </motion.div>
+        {errorMessage && (
+          <motion.div variants={itemVariants} className="mb-6 p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold border border-red-200 max-w-md mx-auto">
+            {errorMessage}
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <motion.div variants={itemVariants} whileHover={{ scale: loadingRole ? 1 : 1.03 }} whileTap={{ scale: loadingRole ? 1 : 0.98 }}>

@@ -195,6 +195,8 @@ const HostelerDashboard = () => {
         setNotifications={setNotifications} 
         isNotifOpen={isNotifOpen} 
         setIsNotifOpen={setIsNotifOpen} 
+        isProfileMenuOpen={isProfileMenuOpen}
+        setIsProfileMenuOpen={setIsProfileMenuOpen}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
       />
@@ -251,7 +253,7 @@ const HostelerDashboard = () => {
 };
 
 // Sub-components
-const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, setIsNotifOpen, searchQuery, setSearchQuery }) => {
+const Header = ({ user, navigate, notifications, setNotifications, isNotifOpen, setIsNotifOpen, isProfileMenuOpen, setIsProfileMenuOpen, searchQuery, setSearchQuery }) => {
   const handleLogout = () => {
     sessionStorage.removeItem('currentUser');
     sessionStorage.removeItem('user');
