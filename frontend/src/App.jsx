@@ -16,6 +16,8 @@ import SelectRole from './pages/SelectRole';
 import TrackOrders from './pages/TrackOrders';
 import Profile from './pages/Profile';
 import CollegeOnboardingModal from './components/CollegeOnboardingModal';
+import AdminLogin from './pages/Admin/AdminLogin';
+import AdminDashboard from './pages/Admin/AdminDashboard';
 import { Toaster } from 'react-hot-toast';
 
 const App = () => {
@@ -44,7 +46,7 @@ const App = () => {
   };
 
   // Determine if onboarding modal should be shown
-  const isAuthPage = ['/home', '/login', '/register', '/forgot-password', '/reset-password', '/'].includes(location.pathname);
+  const isAuthPage = ['/home', '/login', '/register', '/forgot-password', '/reset-password', '/admin/login', '/admin', '/'].includes(location.pathname);
   const needsCollegeOnboarding = currentUser && (!currentUser.collegeName || !currentUser.collegeName.trim() || !currentUser.isPhoneVerified) && !isAuthPage;
 
   return (
@@ -90,6 +92,11 @@ const App = () => {
 
       <Route path="/select-role" element={<SelectRole />} />
       <Route path="/profile" element={<Profile />} />
+
+      {/* 👑 Executive Multi-Tier Admin Portal */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/admin/dashboard" element={<Navigate to="/admin" />} />
     </Routes>
     </>
   );
