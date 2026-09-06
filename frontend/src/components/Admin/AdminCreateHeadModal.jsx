@@ -119,20 +119,37 @@ const AdminCreateHeadModal = ({ isOpen, onClose, onHeadCreated, currentAdminRole
                 </button>
 
                 {currentAdminRole === "founder" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRole("national_head");
-                      setAssignedState("ALL");
-                    }}
-                    className={`p-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                      role === "national_head"
-                        ? "bg-[#8C3F3F] border-[#E8AE68] text-white shadow-md"
-                        : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
-                    }`}
-                  >
-                    <span>🇮🇳</span> Whole India Head
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRole("national_head");
+                        setAssignedState("ALL");
+                      }}
+                      className={`p-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        role === "national_head"
+                          ? "bg-[#8C3F3F] border-[#E8AE68] text-white shadow-md"
+                          : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
+                      }`}
+                    >
+                      <span>🇮🇳</span> Whole India Head
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRole("founder");
+                        setAssignedState("ALL");
+                      }}
+                      className={`p-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        role === "founder"
+                          ? "bg-[#8C3F3F] border-[#E8AE68] text-white shadow-md"
+                          : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
+                      }`}
+                    >
+                      <span>👑</span> Co-Founder & CEO
+                    </button>
+                  </>
                 )}
               </div>
             </div>

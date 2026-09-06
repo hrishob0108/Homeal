@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FiShield, FiMail, FiLock, FiArrowRight, FiLoader, FiAlertCircle, FiCheckCircle } from "react-icons/fi";
+import { FiShield, FiMail, FiLock, FiArrowRight, FiLoader, FiAlertCircle, FiCheckCircle, FiUser } from "react-icons/fi";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -10,10 +10,12 @@ import {
   signOut,
 } from "firebase/auth";
 import { auth } from "../../firebase";
-import { getUserProfile, bootstrapFounderAccount } from "../../services/firestoreService";
+import { getUserProfile, bootstrapFounderAccount, getAdminTeam } from "../../services/firestoreService";
 import toast from "react-hot-toast";
 
 const AdminLogin = () => {
+  const [mode, setMode] = useState("login"); // "login" | "register"
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +25,27 @@ const AdminLogin = () => {
   const [bootstrapPassword, setBootstrapPassword] = useState("");
   const [bootstrapName, setBootstrapName] = useState("");
   const [isBootstrapping, setIsBootstrapping] = useState(false);
+  const [hasExistingFounder, setHasExistingFounder] = useState(false);
+  const [isCheckingFounder, setIsCheckingFounder] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkFounderStatus = async () => {
+      try {
+        const team = await getAdminTeam("ALL");
+        const exists = team.some((m) => m.role === "founder");
+        setHasExistingFounder(exists);
+        if (exists) {
+          setMode("login");
+        }
+      } catch (err) {
+        console.warn("Founder check error:", err);
+      } finally {
+        setIsCheckingFounder(false);
+      }
+    };
+    checkFounderStatus();
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -36,17 +58,68 @@ const AdminLogin = () => {
     setErrorMsg("");
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
-      const fbUser = userCredential.user;
-      const profile = await getUserProfile(fbUser.uid);
+      let fbUser;
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+        fbUser = userCredential.user;
+      } catch (authErr) {
+        // If the email doesn't exist in Firebase Auth yet:
+        if (
+          authErr.code === "auth/user-not-found" ||
+          authErr.code === "auth/invalid-credential"
+        ) {
+          // Check if any founder exists yet
+          let hasFounder = false;
+          try {
+            const team = await getAdminTeam("ALL");
+            hasFounder = team.some((m) => m.role === "founder");
+          } catch (tErr) {
+            console.warn("Could not check admin team:", tErr);
+          }
 
+          // If no founder exists yet, auto-create this user in Firebase Auth and make them Founder!
+          if (!hasFounder) {
+            try {
+              const newCred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+              fbUser = newCred.user;
+              await bootstrapFounderAccount(fbUser.uid, email.trim(), name || "Founder & CEO");
+              toast.success("First-time setup detected: Account created and initialized as Founder & CEO!");
+            } catch (createErr) {
+              console.error("Auto-creation error:", createErr);
+              throw authErr;
+            }
+          } else {
+            throw authErr;
+          }
+        } else {
+          throw authErr;
+        }
+      }
+
+      let profile = await getUserProfile(fbUser.uid);
+
+      // If user is authenticated but has no admin role yet:
       if (!profile || !["founder", "national_head", "state_head"].includes(profile.role)) {
-        await signOut(auth);
-        const err = "Access Denied. Your account is not registered with administrative leadership privileges.";
-        setErrorMsg(err);
-        toast.error(err, { duration: 6000 });
-        setIsLoading(false);
-        return;
+        let hasFounder = false;
+        try {
+          const team = await getAdminTeam("ALL");
+          hasFounder = team.some((m) => m.role === "founder");
+        } catch (tErr) {
+          console.warn("Could not check admin team:", tErr);
+        }
+
+        if (!hasFounder) {
+          // Auto-grant founder if no founder exists
+          profile = await bootstrapFounderAccount(fbUser.uid, email.trim(), profile?.name || name || "Founder & CEO");
+          toast.success("Account initialized as Founder & CEO!");
+        } else {
+          await signOut(auth);
+          const err = "Access Denied. Your account is not registered with administrative leadership privileges.";
+          setErrorMsg(err);
+          toast.error(err, { duration: 6000 });
+          setIsLoading(false);
+          return;
+        }
       }
 
       if (profile.status === "suspended") {
@@ -77,13 +150,85 @@ const AdminLogin = () => {
       let msg = "Invalid credentials. Please verify your official email and password.";
       if (
         err.code === "auth/user-not-found" ||
-        err.code === "auth/wrong-password" ||
         err.code === "auth/invalid-credential"
       ) {
-        msg = "Account not found or incorrect password. First time setting up? Click 'First time? Initialize Founder' below to claim your account.";
+        msg = "Account not found with this email. Switch to the 'Register Founder' tab above to create this account!";
+      } else if (err.code === "auth/wrong-password") {
+        msg = "Incorrect password. Please re-enter your password.";
+      } else if (err.code === "auth/operation-not-allowed") {
+        msg = "Email/Password sign-in is disabled in Firebase Console. Click 'Sign In with Google' or enable Email/Password in Firebase Console > Authentication.";
       }
       setErrorMsg(msg);
       toast.error(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegisterFounder = async (e) => {
+    e.preventDefault();
+    if (!email.trim() || !password) {
+      setErrorMsg("Please enter both email and password.");
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMsg("Password must be at least 6 characters.");
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMsg("");
+
+    try {
+      let fbUser;
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        fbUser = cred.user;
+      } catch (createErr) {
+        if (createErr.code === "auth/email-already-in-use") {
+          // If already in Firebase Auth, sign in with this password
+          try {
+            const signCred = await signInWithEmailAndPassword(auth, email.trim(), password);
+            fbUser = signCred.user;
+          } catch (signErr) {
+            setErrorMsg("This email is already registered in Firebase. If it's yours, enter the correct password.");
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          throw createErr;
+        }
+      }
+
+      // Upgrade account to Founder
+      const upgraded = await bootstrapFounderAccount(
+        fbUser.uid,
+        email.trim(),
+        name.trim() || "Founder & CEO"
+      );
+
+      const token = await fbUser.getIdToken();
+      const adminSession = {
+        _id: fbUser.uid,
+        uid: fbUser.uid,
+        name: upgraded.name,
+        email: upgraded.email,
+        role: "founder",
+        assignedState: "ALL",
+        token: token,
+      };
+
+      sessionStorage.setItem("adminUser", JSON.stringify(adminSession));
+      toast.success("Founder & CEO account created and logged in!");
+      navigate("/admin");
+    } catch (err) {
+      console.error("Founder registration error:", err);
+      let msg = err.message || "Failed to register founder account.";
+      if (err.code === "auth/operation-not-allowed") {
+        msg = "Email/Password authentication is disabled in your Firebase Console. Click 'Claim Founder Role with Google (1-Click)' above, OR enable Email/Password under Firebase Console > Authentication > Sign-in method.";
+      }
+      setErrorMsg(msg);
+      toast.error(msg, { duration: 8000 });
     } finally {
       setIsLoading(false);
     }
@@ -269,6 +414,40 @@ const AdminLogin = () => {
           </p>
         </div>
 
+        {/* If a founder is already registered, show permanent security lock badge and ONLY allow Sign In */}
+        {hasExistingFounder ? (
+          <div className="mb-6 py-2.5 px-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center justify-center gap-2">
+            <FiCheckCircle className="text-emerald-400 shrink-0" />
+            <span>Founder & CEO Registered • Portal Locked to Verified Leadership</span>
+          </div>
+        ) : (
+          /* Mode Toggle: Sign In vs Register Founder (ONLY shown during first-time initial setup!) */
+          <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 mb-6">
+            <button
+              type="button"
+              onClick={() => { setMode("login"); setErrorMsg(""); }}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                mode === "login"
+                  ? "bg-[#8C3F3F] text-white shadow-md"
+                  : "text-white/50 hover:text-white"
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode("register"); setErrorMsg(""); }}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                mode === "register"
+                  ? "bg-gradient-to-r from-[#8C3F3F] to-[#E8AE68] text-white shadow-md"
+                  : "text-white/50 hover:text-white"
+              }`}
+            >
+              👑 Register Founder
+            </button>
+          </div>
+        )}
+
         {/* Error notification */}
         {errorMsg && (
           <motion.div
@@ -283,11 +462,11 @@ const AdminLogin = () => {
 
         {/* Form */}
         <div className="space-y-4">
-          {/* Google Sign-in for Admin */}
+          {/* Google Sign-in */}
           <button
             type="button"
-            onClick={handleGoogleLogin}
-            disabled={isLoading}
+            onClick={mode === "register" ? handleBootstrapWithGoogle : handleGoogleLogin}
+            disabled={isLoading || isBootstrapping}
             className="w-full py-3.5 rounded-2xl bg-white hover:bg-white/95 text-gray-900 font-bold text-xs shadow-md flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -296,16 +475,38 @@ const AdminLogin = () => {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
             </svg>
-            <span>Sign In with Google (Admin)</span>
+            <span>
+              {mode === "register" ? "Claim Founder Role with Google (1-Click)" : "Sign In with Google (Admin)"}
+            </span>
           </button>
 
           <div className="relative flex py-1 items-center">
             <div className="flex-grow border-t border-white/10"></div>
-            <span className="shrink mx-3 text-[10px] uppercase tracking-wider text-white/40 font-bold">Or with Email</span>
+            <span className="shrink mx-3 text-[10px] uppercase tracking-wider text-white/40 font-bold">
+              {mode === "register" ? "Or Register with Email" : "Or with Email"}
+            </span>
             <div className="flex-grow border-t border-white/10"></div>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={mode === "register" ? handleRegisterFounder : handleLogin} className="space-y-4">
+            {mode === "register" && (
+              <div>
+                <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-2 text-left">
+                  Your Full Name
+                </label>
+                <div className="relative flex items-center">
+                  <FiUser className="absolute left-4 text-white/40 text-lg" />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Hrishob P"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm text-white placeholder-white/25 focus:outline-none focus:border-[#E8AE68] transition-all"
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-2 text-left">
                 Official Email
@@ -349,6 +550,11 @@ const AdminLogin = () => {
                 <>
                   <FiLoader className="w-4 h-4 animate-spin" /> Authenticating...
                 </>
+              ) : mode === "register" ? (
+                <>
+                  <span>👑 Create & Initialize Founder Account</span>
+                  <FiArrowRight className="w-4 h-4" />
+                </>
               ) : (
                 <>
                   <span>Access Command Center</span>
@@ -368,12 +574,14 @@ const AdminLogin = () => {
             ← Back to Student App
           </Link>
 
-          <button
-            onClick={() => setShowBootstrapModal(true)}
-            className="hover:text-[#E8AE68] transition-colors underline cursor-pointer"
-          >
-            First time? Initialize Founder
-          </button>
+          {!hasExistingFounder && (
+            <button
+              onClick={() => setShowBootstrapModal(true)}
+              className="hover:text-[#E8AE68] transition-colors underline cursor-pointer"
+            >
+              First time? Initialize Founder
+            </button>
+          )}
         </div>
       </motion.div>
 
