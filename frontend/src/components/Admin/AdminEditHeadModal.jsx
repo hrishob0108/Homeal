@@ -1,79 +1,83 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FiX,
   FiUser,
   FiMail,
-  FiLock,
   FiShield,
   FiMapPin,
   FiPhone,
   FiCheck,
   FiLoader,
-  FiKey,
-  FiEye,
-  FiEyeOff,
   FiAlertCircle,
   FiAlertTriangle,
+  FiEdit,
+  FiActivity,
 } from "react-icons/fi";
-import { createAdminAccount } from "../../services/firestoreService";
+import { updateAdminProfile } from "../../services/firestoreService";
 import collegesHierarchy from "../../data/collegesHierarchy.json";
 import toast from "react-hot-toast";
 
-const AdminCreateHeadModal = ({
+const AdminEditHeadModal = ({
   isOpen,
   onClose,
-  onHeadCreated,
+  leader,
   currentAdminRole,
   existingTeam = [],
+  onHeadUpdated,
 }) => {
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState("state_head");
   const [assignedState, setAssignedState] = useState("");
   const [phone, setPhone] = useState("");
+  const [status, setStatus] = useState("active");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
 
-  // Extract all states from collegesHierarchy.json
+  // Populate form fields on leader change
+  useEffect(() => {
+    if (leader) {
+      setName(leader.name || "");
+      setRole(leader.role || "state_head");
+      setAssignedState(leader.assignedState || "");
+      setPhone(leader.phone || "");
+      setStatus(leader.status || "active");
+      setErrors({});
+      setTouched({});
+    }
+  }, [leader]);
+
+  // Extract all states
   const statesList = useMemo(() => {
     return Object.keys(collegesHierarchy).sort();
   }, []);
 
-  // Top authority emails from env to prevent accidental duplication
-  const founderEmails = useMemo(() => {
-    return (
-      import.meta.env.VITE_FOUNDER_EMAILS ||
-      "hrishobp@gmail.com,naveenpavurala2005@gmail.com"
-    )
-      .split(",")
-      .map((e) => e.trim().toLowerCase());
-  }, []);
-
-  // Check if selected state already has an active head
+  // Check if another active state head exists for the chosen state (excluding this leader)
   const existingStateHead = useMemo(() => {
-    if (role !== "state_head" || !assignedState) return null;
+    if (role !== "state_head" || !assignedState || !leader) return null;
     return existingTeam.find(
       (m) =>
+        m._id !== leader._id &&
         m.role === "state_head" &&
         m.status === "active" &&
         (m.assignedState || "").toLowerCase() === assignedState.toLowerCase()
     );
-  }, [role, assignedState, existingTeam]);
+  }, [role, assignedState, existingTeam, leader]);
 
-  // Check if an active national head already exists
+  // Check if another active national head exists (excluding this leader)
   const existingNationalHead = useMemo(() => {
-    if (role !== "national_head") return null;
+    if (role !== "national_head" || !leader) return null;
     return existingTeam.find(
-      (m) => m.role === "national_head" && m.status === "active"
+      (m) =>
+        m._id !== leader._id &&
+        m.role === "national_head" &&
+        m.status === "active"
     );
-  }, [role, existingTeam]);
+  }, [role, existingTeam, leader]);
 
   // Validation function
-  const validate = (fieldValues = { name, email, password, role, assignedState, phone }) => {
+  const validate = (fieldValues = { name, role, assignedState, phone, status }) => {
     const errs = {};
 
     // Name Validation
@@ -87,39 +91,10 @@ const AdminCreateHeadModal = ({
       errs.name = "Name should contain only alphabets and spaces.";
     }
 
-    // Email Validation
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    const cleanEmail = (fieldValues.email || "").trim().toLowerCase();
-    if (!cleanEmail) {
-      errs.email = "Official email address is required.";
-    } else if (!emailRegex.test(cleanEmail)) {
-      errs.email = "Enter a valid email address (e.g. statehead@craavyo.com).";
-    } else if (founderEmails.includes(cleanEmail)) {
-      errs.email = "This email is reserved for top Founder & CEO authorities.";
-    } else if (
-      existingTeam.some(
-        (m) => (m.email || "").toLowerCase() === cleanEmail
-      )
-    ) {
-      errs.email = "An administrator account with this email already exists.";
-    }
-
-    // Password Validation
-    if (!fieldValues.password) {
-      errs.password = "Password is required.";
-    } else if (fieldValues.password.length < 6) {
-      errs.password = "Password must be at least 6 characters.";
-    } else if (!/(?=.*[a-zA-Z])(?=.*[0-9!@#$%^&*])/.test(fieldValues.password)) {
-      errs.password = "Password must contain at least 1 letter and 1 number or symbol.";
-    }
-
     // Role & Hierarchy Validation
-    if (fieldValues.role === "national_head") {
-      const activeNationalHead = existingTeam.find(
-        (m) => m.role === "national_head" && m.status === "active"
-      );
-      if (activeNationalHead) {
-        errs.role = `An active Whole India Head (${activeNationalHead.name}) already exists. Please suspend or reassign them first.`;
+    if (fieldValues.role === "national_head" && fieldValues.status === "active") {
+      if (existingNationalHead) {
+        errs.role = `An active Whole India Head (${existingNationalHead.name}) already exists.`;
       }
     }
 
@@ -127,16 +102,8 @@ const AdminCreateHeadModal = ({
     if (fieldValues.role === "state_head") {
       if (!fieldValues.assignedState || fieldValues.assignedState === "ALL") {
         errs.assignedState = "Please select an assigned Indian State.";
-      } else {
-        const activeHeadForState = existingTeam.find(
-          (m) =>
-            m.role === "state_head" &&
-            m.status === "active" &&
-            (m.assignedState || "").toLowerCase() === (fieldValues.assignedState || "").toLowerCase()
-        );
-        if (activeHeadForState) {
-          errs.assignedState = `${fieldValues.assignedState} already has an active State Head (${activeHeadForState.name}). Please suspend or reassign them first.`;
-        }
+      } else if (fieldValues.status === "active" && existingStateHead) {
+        errs.assignedState = `${fieldValues.assignedState} already has an active State Head (${existingStateHead.name}).`;
       }
     }
 
@@ -163,20 +130,17 @@ const AdminCreateHeadModal = ({
 
   const handleFieldChange = (field, value) => {
     if (field === "name") setName(value);
-    if (field === "email") setEmail(value);
-    if (field === "password") setPassword(value);
     if (field === "assignedState") setAssignedState(value);
     if (field === "phone") setPhone(value);
+    if (field === "status") setStatus(value);
 
-    // Live clear error if field is touched
     if (touched[field]) {
       const updatedValues = {
         name,
-        email,
-        password,
         role,
         assignedState,
         phone,
+        status,
         [field]: value,
       };
       const validationErrors = validate(updatedValues);
@@ -184,25 +148,10 @@ const AdminCreateHeadModal = ({
     }
   };
 
-  const generateRandomPassword = () => {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
-    let pass = "";
-    for (let i = 0; i < 10; i++) {
-      pass += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setPassword(pass);
-    if (errors.password) {
-      setErrors((prev) => ({ ...prev, password: null }));
-    }
-    toast.success("Strong 10-character password generated!");
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setTouched({
       name: true,
-      email: true,
-      password: true,
       assignedState: true,
       phone: true,
     });
@@ -223,47 +172,31 @@ const AdminCreateHeadModal = ({
       else if (cleanPhone.startsWith("91") && cleanPhone.length === 12) cleanPhone = cleanPhone.slice(2);
       else if (cleanPhone.startsWith("0") && cleanPhone.length === 11) cleanPhone = cleanPhone.slice(1);
 
-      const newAdmin = await createAdminAccount({
+      const updated = await updateAdminProfile(leader._id, {
         name: name.trim(),
-        email: email.trim().toLowerCase(),
-        password,
-        role,
+        role: role,
         assignedState: role === "national_head" ? "ALL" : assignedState,
         phone: cleanPhone,
+        status: status,
       });
 
-      toast.success(`Head account provisioned for ${name}! Credentials active.`);
-      if (onHeadCreated) onHeadCreated(newAdmin);
-
-      // Reset form
-      setName("");
-      setEmail("");
-      setPassword("");
-      setRole("state_head");
-      setAssignedState("");
-      setPhone("");
-      setErrors({});
-      setTouched({});
+      toast.success(`Updated leadership profile for ${name}!`);
+      if (onHeadUpdated) {
+        onHeadUpdated({
+          ...leader,
+          ...updated,
+        });
+      }
       onClose();
     } catch (err) {
-      console.error("Admin Creation Error:", err);
-      let msg = err.message || "Failed to create head account.";
-      if (err.code === "auth/email-already-in-use" || msg.includes("email-already-in-use")) {
-        msg = "An account with this email address already exists in Craavyo.";
-      } else if (err.code === "auth/weak-password" || msg.includes("weak-password")) {
-        msg = "The chosen password is too weak. Please include letters and numbers.";
-      } else if (err.code === "auth/invalid-email" || msg.includes("invalid-email")) {
-        msg = "The email address format is invalid.";
-      } else if (err.code === "auth/operation-not-allowed") {
-        msg = "Email/password provider is not enabled in Firebase Console.";
-      }
-      toast.error(msg, { duration: 5000 });
+      console.error("Update Leader Error:", err);
+      toast.error(err.message || "Failed to update leader profile.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !leader) return null;
 
   return (
     <AnimatePresence>
@@ -284,20 +217,41 @@ const AdminCreateHeadModal = ({
 
           {/* Header */}
           <div className="flex items-center gap-3.5 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#8C3F3F] to-[#B0464A] flex items-center justify-center text-xl text-white shadow-lg">
-              <FiShield />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#E8AE68] to-[#8C3F3F] flex items-center justify-center text-xl text-white shadow-lg">
+              <FiEdit />
             </div>
             <div>
               <h3 className="text-xl sm:text-2xl font-serif font-black text-white">
-                Provision New Leader
+                Edit Leader Profile
               </h3>
               <p className="text-xs text-white/60">
-                Issue official credentials for National or Regional leadership
+                Modify leadership level, jurisdiction, and contact credentials
               </p>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4 text-left" noValidate>
+            {/* Account Email (Read-only) */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-xs font-bold text-white/80 uppercase tracking-wider">
+                  Official Email
+                </label>
+                <span className="text-[10px] text-[#E8AE68] font-bold bg-[#E8AE68]/10 px-2 py-0.5 rounded-full border border-[#E8AE68]/20">
+                  Fixed Identity
+                </span>
+              </div>
+              <div className="relative flex items-center">
+                <FiMail className="absolute left-3.5 text-white/30" />
+                <input
+                  type="email"
+                  value={leader.email || ""}
+                  disabled
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white/60 cursor-not-allowed font-mono"
+                />
+              </div>
+            </div>
+
             {/* Role Selector */}
             <div>
               <label className="block text-xs font-bold text-white/80 uppercase tracking-wider mb-1.5">
@@ -341,15 +295,10 @@ const AdminCreateHeadModal = ({
                 <div className="mt-2.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2">
                   <FiAlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
                   <span>
-                    An active Whole India Head already exists:{" "}
-                    <strong>{existingNationalHead.name}</strong> ({existingNationalHead.email}). Suspend or reassign them before appointing a new head.
+                    Another active Whole India Head already exists:{" "}
+                    <strong>{existingNationalHead.name}</strong>.
                   </span>
                 </div>
-              )}
-              {errors.role && (
-                <p className="text-[11px] text-red-400 mt-1.5 flex items-center gap-1 font-medium">
-                  <FiAlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.role}
-                </p>
               )}
             </div>
 
@@ -376,76 +325,6 @@ const AdminCreateHeadModal = ({
               {touched.name && errors.name && (
                 <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1 font-medium">
                   <FiAlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.name}
-                </p>
-              )}
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="block text-xs font-bold text-white/80 uppercase tracking-wider mb-1.5">
-                Official Email Address <span className="text-red-400">*</span>
-              </label>
-              <div className="relative flex items-center">
-                <FiMail className="absolute left-3.5 text-white/40" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => handleFieldChange("email", e.target.value)}
-                  onBlur={() => handleBlur("email")}
-                  placeholder="e.g. tamilnadu.head@craavyo.com"
-                  className={`w-full bg-white/5 border rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-white/30 focus:outline-none transition-all ${
-                    touched.email && errors.email
-                      ? "border-red-500/80 bg-red-500/5 focus:border-red-500"
-                      : "border-white/10 focus:border-[#E8AE68]"
-                  }`}
-                />
-              </div>
-              {touched.email && errors.email && (
-                <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1 font-medium">
-                  <FiAlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.email}
-                </p>
-              )}
-            </div>
-
-            {/* Password with Generator & Eye Toggle */}
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="block text-xs font-bold text-white/80 uppercase tracking-wider">
-                  Password <span className="text-red-400">*</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={generateRandomPassword}
-                  className="text-[11px] font-bold text-[#E8AE68] hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <FiKey className="w-3 h-3" /> Auto-generate Strong
-                </button>
-              </div>
-              <div className="relative flex items-center">
-                <FiLock className="absolute left-3.5 text-white/40" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => handleFieldChange("password", e.target.value)}
-                  onBlur={() => handleBlur("password")}
-                  placeholder="Min 6 chars (letters + numbers)"
-                  className={`w-full bg-white/5 border rounded-xl py-2.5 pl-10 pr-10 text-sm text-white placeholder-white/30 focus:outline-none font-mono transition-all ${
-                    touched.password && errors.password
-                      ? "border-red-500/80 bg-red-500/5 focus:border-red-500"
-                      : "border-white/10 focus:border-[#E8AE68]"
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 text-white/40 hover:text-white cursor-pointer"
-                >
-                  {showPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
-                </button>
-              </div>
-              {touched.password && errors.password && (
-                <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1 font-medium">
-                  <FiAlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.password}
                 </p>
               )}
             </div>
@@ -482,7 +361,6 @@ const AdminCreateHeadModal = ({
                   </p>
                 )}
 
-                {/* State head duplication warning */}
                 {existingStateHead && (
                   <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2">
                     <FiAlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
@@ -495,7 +373,7 @@ const AdminCreateHeadModal = ({
               </div>
             )}
 
-            {/* Phone (optional) */}
+            {/* Phone */}
             <div>
               <label className="block text-xs font-bold text-white/80 uppercase tracking-wider mb-1.5">
                 Phone Number <span className="text-white/40 lowercase">(optional)</span>
@@ -522,7 +400,38 @@ const AdminCreateHeadModal = ({
               )}
             </div>
 
-            {/* Action Buttons */}
+            {/* Status Selector */}
+            <div>
+              <label className="block text-xs font-bold text-white/80 uppercase tracking-wider mb-1.5">
+                Account Status
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStatus("active")}
+                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    status === "active"
+                      ? "bg-emerald-600/30 border-emerald-500 text-emerald-300"
+                      : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span> Active
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatus("suspended")}
+                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    status === "suspended"
+                      ? "bg-red-600/30 border-red-500 text-red-300"
+                      : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-red-400"></span> Suspended
+                </button>
+              </div>
+            </div>
+
+            {/* Actions */}
             <div className="pt-3 flex items-center gap-3">
               <button
                 type="button"
@@ -538,11 +447,11 @@ const AdminCreateHeadModal = ({
               >
                 {isSubmitting ? (
                   <>
-                    <FiLoader className="w-4 h-4 animate-spin" /> Provisioning...
+                    <FiLoader className="w-4 h-4 animate-spin" /> Saving Changes...
                   </>
                 ) : (
                   <>
-                    <FiCheck className="w-4 h-4" /> Create Head Account
+                    <FiCheck className="w-4 h-4" /> Save Changes
                   </>
                 )}
               </button>
@@ -554,4 +463,4 @@ const AdminCreateHeadModal = ({
   );
 };
 
-export default AdminCreateHeadModal;
+export default AdminEditHeadModal;

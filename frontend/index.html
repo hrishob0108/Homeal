@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo-html.png" />
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/logo-html.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,6 +33,19 @@
     <meta property="twitter:image" content="https://craavyo.com/image.png" />
     
     <link rel="canonical" href="https://craavyo.com/" />
+    <style>
+      /* Hide persistent Google reCAPTCHA badge from bottom corner */
+      .grecaptcha-badge {
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        position: absolute !important;
+        left: -9999px !important;
+        bottom: -9999px !important;
+        display: none !important;
+        z-index: -9999 !important;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

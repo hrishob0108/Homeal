@@ -68,6 +68,20 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
     return results;
   }, [searchQuery]);
 
+  // Cleanup recaptcha and badge on unmount
+  useEffect(() => {
+    return () => {
+      if (window.recaptchaVerifier) {
+        try {
+          window.recaptchaVerifier.clear();
+        } catch (e) {}
+        window.recaptchaVerifier = null;
+      }
+      const badges = document.querySelectorAll(".grecaptcha-badge");
+      badges.forEach((b) => b.remove());
+    };
+  }, []);
+
   // Helper to safely get or create RecaptchaVerifier without duplicate rendering errors
   const getRecaptchaVerifier = () => {
     if (window.recaptchaVerifier) {
@@ -228,6 +242,15 @@ const CollegeOnboardingModal = ({ user, onCollegeSelected }) => {
       sessionStorage.setItem("currentUser", JSON.stringify(updatedUser));
 
       toast.success("College profile saved successfully!");
+
+      if (window.recaptchaVerifier) {
+        try {
+          window.recaptchaVerifier.clear();
+        } catch (e) {}
+        window.recaptchaVerifier = null;
+      }
+      const badges = document.querySelectorAll(".grecaptcha-badge");
+      badges.forEach((b) => b.remove());
 
       if (onCollegeSelected) {
         onCollegeSelected(updatedUser);
