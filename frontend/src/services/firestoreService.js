@@ -1,3 +1,5 @@
+import { initializeApp, deleteApp } from "firebase/app";
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { 
   collection,
   doc, 
@@ -13,7 +15,7 @@ import {
   onSnapshot,
   serverTimestamp 
 } from "firebase/firestore";
-import { db, auth } from "../firebase";
+import { db, auth, firebaseConfig } from "../firebase";
 
 // ==========================================
 // 1. USER PROFILES
@@ -153,6 +155,9 @@ export const createOrder = async (orderData) => {
     price: Number(orderData.price) || 0,
     imageUrl: orderData.imageUrl || "",
     deliveryLocation: orderData.deliveryLocation || "Hostel Room Delivery",
+    collegeName: (orderData.collegeName || "").trim(),
+    state: (orderData.state || orderData.collegeState || "").trim(),
+    district: (orderData.district || "").trim(),
     neededBy: orderData.neededBy || "Asap",
     status: "Pending",
     otp: otp,
@@ -383,3 +388,181 @@ export const getMyReviews = async (reviewerId) => {
   const reviews = snap.docs.map(doc => ({ _id: doc.id, id: doc.id, ...doc.data() }));
   return reviews.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 };
+
+// ==========================================
+// 6. ADMIN & HIERARCHICAL GOVERNANCE
+// ==========================================
+
+export const createAdminAccount = async ({ email, password, name, role, assignedState, phone }) => {
+  const tempAppName = "AdminCreationApp_" + Date.now();
+  const secondaryApp = initializeApp(firebaseConfig, tempAppName);
+  try {
+    const secondaryAuth = getAuth(secondaryApp);
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email.trim(), password);
+    const newUid = cred.user.uid;
+
+    const adminProfile = {
+      uid: newUid,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      role: role || "state_head", // 'founder' | 'national_head' | 'state_head'
+      assignedState: (role === "founder" || role === "national_head") ? "ALL" : (assignedState || "ALL").trim(),
+      phone: phone ? phone.trim() : "",
+      status: "active",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      createdBy: auth.currentUser?.uid || "system",
+      createdByName: auth.currentUser?.displayName || "Founder & CEO",
+    };
+
+    await setDoc(doc(db, "users", newUid), adminProfile);
+    return { _id: newUid, id: newUid, ...adminProfile };
+  } finally {
+    await deleteApp(secondaryApp);
+  }
+};
+
+export const getAdminTeam = async (filterState = "ALL") => {
+  const usersCol = collection(db, "users");
+  const snap = await getDocs(usersCol);
+  const team = [];
+  snap.forEach((d) => {
+    const data = d.data();
+    if (["founder", "national_head", "state_head"].includes(data.role)) {
+      team.push({ _id: d.id, id: d.id, ...data });
+    }
+  });
+
+  if (filterState && filterState !== "ALL") {
+    return team.filter((m) => m.assignedState === filterState || m.assignedState === "ALL");
+  }
+  return team.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+};
+
+export const updateAdminStatus = async (uid, status) => {
+  const userDocRef = doc(db, "users", uid);
+  await updateDoc(userDocRef, {
+    status: status,
+    updatedAt: serverTimestamp()
+  });
+};
+
+export const updateAdminState = async (uid, assignedState) => {
+  const userDocRef = doc(db, "users", uid);
+  await updateDoc(userDocRef, {
+    assignedState: assignedState.trim(),
+    updatedAt: serverTimestamp()
+  });
+};
+
+export const bootstrapFounderAccount = async (uid, email, name) => {
+  const userDocRef = doc(db, "users", uid);
+  const payload = {
+    role: "founder",
+    assignedState: "ALL",
+    status: "active",
+    name: name || "Founder & CEO",
+    email: email.trim().toLowerCase(),
+    updatedAt: serverTimestamp()
+  };
+  await setDoc(userDocRef, payload, { merge: true });
+  return { _id: uid, uid, ...payload };
+};
+
+export const getAllOrdersForAdmin = async (filterState = "ALL") => {
+  const ordersCol = collection(db, "orders");
+  const snap = await getDocs(ordersCol);
+  let orders = snap.docs.map(d => ({ _id: d.id, id: d.id, ...d.data() }));
+
+  if (filterState && filterState !== "ALL") {
+    orders = orders.filter(o => (o.state || "").toLowerCase() === filterState.toLowerCase());
+  }
+  return orders.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+};
+
+export const getAllUsersForAdmin = async (filterState = "ALL") => {
+  const usersCol = collection(db, "users");
+  const snap = await getDocs(usersCol);
+  let users = snap.docs.map(d => ({ _id: d.id, id: d.id, ...d.data() }));
+
+  if (filterState && filterState !== "ALL") {
+    users = users.filter(u => (u.state || "").toLowerCase() === filterState.toLowerCase());
+  }
+  return users.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+};
+
+export const getAdminMetrics = async (filterState = "ALL") => {
+  const [ordersSnap, mealsSnap, usersSnap, reviewsSnap] = await Promise.all([
+    getDocs(collection(db, "orders")),
+    getDocs(collection(db, "meals")),
+    getDocs(collection(db, "users")),
+    getDocs(collection(db, "reviews"))
+  ]);
+
+  let orders = ordersSnap.docs.map(d => ({ _id: d.id, ...d.data() }));
+  let meals = mealsSnap.docs.map(d => ({ _id: d.id, ...d.data() }));
+  let users = usersSnap.docs.map(d => ({ _id: d.id, ...d.data() }));
+  let reviews = reviewsSnap.docs.map(d => ({ _id: d.id, ...d.data() }));
+
+  if (filterState && filterState !== "ALL") {
+    const norm = filterState.toLowerCase();
+    orders = orders.filter(o => (o.state || "").toLowerCase() === norm);
+    meals = meals.filter(m => (m.state || "").toLowerCase() === norm);
+    users = users.filter(u => (u.state || "").toLowerCase() === norm);
+    const validOrderIds = new Set(orders.map(o => o._id));
+    reviews = reviews.filter(r => validOrderIds.has(r.orderId));
+  }
+
+  const totalOrders = orders.length;
+  const completedOrders = orders.filter(o => o.status === "Delivered").length;
+  const activeOrders = orders.filter(o => !["Delivered", "Declined"].includes(o.status)).length;
+  const totalRevenue = orders
+    .filter(o => o.status === "Delivered")
+    .reduce((sum, o) => sum + (Number(o.price) || 0), 0);
+
+  const dayscholarsCount = users.filter(u => u.role === "dayscholar").length;
+  const hostelersCount = users.filter(u => u.role === "hosteler").length;
+  const activeMealsCount = meals.length;
+
+  const totalReviews = reviews.length;
+  const avgRating = totalReviews > 0
+    ? Number((reviews.reduce((acc, r) => acc + (Number(r.rating) || 0), 0) / totalReviews).toFixed(1))
+    : 4.9;
+
+  const verifiedProofsCount = orders.filter(o => o.cookingProofImageUrl || o.handoverProofImageUrl).length;
+
+  // College breakdowns & leaderboard
+  const collegeMap = {};
+  users.forEach(u => {
+    if (u.collegeName) {
+      collegeMap[u.collegeName] = (collegeMap[u.collegeName] || 0) + 1;
+    }
+  });
+
+  return {
+    totalOrders,
+    completedOrders,
+    activeOrders,
+    totalRevenue,
+    dayscholarsCount,
+    hostelersCount,
+    activeMealsCount,
+    totalUsers: users.length,
+    avgRating,
+    totalReviews,
+    verifiedProofsCount,
+    collegesCovered: Object.keys(collegeMap).length,
+    collegeMap
+  };
+};
+
+export const getFlaggedReviews = async (filterState = "ALL") => {
+  const reviewsCol = collection(db, "reviews");
+  const snap = await getDocs(reviewsCol);
+  const lowReviews = snap.docs
+    .map(d => ({ _id: d.id, ...d.data() }))
+    .filter(r => Number(r.rating) <= 3);
+
+  return lowReviews.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+};
+

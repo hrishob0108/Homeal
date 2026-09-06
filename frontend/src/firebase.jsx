@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDKLjHB8vvxX9maZ-tdaNiwZOe6QaBNTAY",
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "craavyo-aa5c9.firebaseapp.com",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "craavyo-aa5c9",
